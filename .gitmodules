@@ -1,0 +1,3 @@
+[submodule "aarch64"]
+	path = aarch64
+	url = https://github.com/songzhi/aarch64
