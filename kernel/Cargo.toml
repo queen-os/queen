@@ -1,9 +1,18 @@
 [package]
-name = "kernal"
+name = "queen-core"
 version = "0.1.0"
 authors = ["lsongzhi <lsongzhi@163.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+lto = true
+
+[features]
+default = ["bsp_virt"]
+# QEMU virt board for aarch64
+bsp_virt = []
+
 [dependencies]
+aarch64 = { path = "../aarch64" }

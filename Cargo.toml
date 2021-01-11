@@ -1,2 +1,2 @@
 [workspace]
-members = ["aarch64", "kernal"]
+members = ["aarch64", "kernel"]

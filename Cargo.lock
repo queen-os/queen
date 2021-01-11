@@ -43,8 +43,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "kernal"
+name = "queen-core"
 version = "0.1.0"
+dependencies = [
+ "aarch64",
+]
 
 [[package]]
 name = "register"
