@@ -8,11 +8,16 @@ rust_flags := -C link-arg=-Tkernel/src/arch/$(arch)/boot/link.ld -C target-cpu=$
 build_args := --target=$(target)
 build_path := ../target/$(target)/$(mode)
 kernel := $(build_path)/queen-core
+smp := 4
 qemu_opts := \
+	-s -S \
 	-M $(board) \
 	-cpu $(target_cpu) \
+	-smp $(smp) \
 	-serial stdio -display none \
 	-kernel $(kernel)
+
+export LOG = info
 
 ifeq ($(mode), release)
 build_args += --release

@@ -11,6 +11,7 @@ impl core::fmt::Write for MiniUART {
     }
 }
 
+#[inline]
 pub fn uart() -> MiniUART {
     MiniUART {}
 }

@@ -5,12 +5,14 @@ pub mod cpu;
 pub mod memory;
 
 #[no_mangle]
-pub fn main_start() -> ! {
+unsafe extern "C" fn main_start() -> ! {
     memory::early_init();
+    crate::logging::init();
     crate::kmain();
 }
 
+
 #[no_mangle]
-pub fn others_start() -> ! {
+extern "C" fn others_start() -> ! {
     crate::kmain();
 }

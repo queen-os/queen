@@ -4,7 +4,7 @@ STACKTOP = 0x41000000;
 
 SECTIONS
 {
-    . = 0x40000000; /* Load the kernel at this address. */
+    . = 0x40008000; /* Load the kernel at this address. */
 
     .text :
     {

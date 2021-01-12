@@ -5,10 +5,14 @@
 #![feature(format_args_nl)]
 #![no_std]
 
+#[macro_use]
+extern crate log;
+#[macro_use]
+mod logging;
 #[path = "arch/aarch64/mod.rs"]
 pub mod arch;
 pub mod memory;
-mod print;
+mod panic_wait;
 pub use arch::cpu;
 
 pub fn kmain() -> ! {
@@ -16,14 +20,4 @@ pub fn kmain() -> ! {
     loop {
         cpu::halt();
     }
-}
-
-#[panic_handler]
-fn panic(info: &core::panic::PanicInfo) -> ! {
-    if let Some(args) = info.message() {
-        println!("\nKernel panic: {}", args);
-    } else {
-        println!("\nKernel panic!");
-    }
-    cpu::wait_forever();
 }

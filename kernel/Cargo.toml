@@ -6,9 +6,6 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[profile.release]
-lto = true
-
 [features]
 default = ["bsp_virt"]
 # QEMU virt board for aarch64
@@ -16,3 +13,5 @@ bsp_virt = []
 
 [dependencies]
 aarch64 = { path = "../aarch64" }
+log = "0.4"
+spin = "0.7"
