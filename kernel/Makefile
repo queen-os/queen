@@ -10,7 +10,7 @@ build_path := ../target/$(target)/$(mode)
 kernel := $(build_path)/queen-core
 smp := 4
 qemu_opts := \
-	-s -S \
+	-s \
 	-M $(board) \
 	-cpu $(target_cpu) \
 	-smp $(smp) \
@@ -35,3 +35,6 @@ justrun:
 
 clean:
 	rm -rf ../target
+
+gdb:
+	gdb-multiarch ../target/aarch64-unknown-none-softfloat/release/queen-core

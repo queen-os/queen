@@ -19,6 +19,7 @@ pub fn init() {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
+    let _guard = LOG_LOCK.lock();
     crate::arch::bsp::uart::uart().write_fmt(args).unwrap();
 }
 
@@ -45,7 +46,6 @@ macro_rules! with_color {
 }
 
 fn print_with_color(args: fmt::Arguments, color_code: u8) {
-    let _guard = LOG_LOCK.lock();
     _print(with_color!(args, color_code));
 }
 

@@ -1,39 +1,47 @@
 ENTRY(_start)
 
-STACKTOP = 0x41000000;
-
 SECTIONS
 {
-    . = 0x40008000; /* Load the kernel at this address. */
+  . = 0x40080000; /* Load the kernel at this address. */
 
-    .text :
-    {
-        *(.text._start) *(.text*)
-    }
+  .text : {
+    stext = .;
+    *(.text.boot)
+    *(.text .text.* .gnu.linkonce.t*)
+    . = ALIGN(4K);
+    etext = .;
+  }
 
-    .rodata :
-    {
-        *(.rodata*)
-    }
+  .rodata : {
+    srodata = .;
+    *(.rodata .rodata.* .gnu.linkonce.r*)
+    . = ALIGN(4K);
+    erodata = .;
+  }
 
-    .data :
-    {
-        *(.data*)
-    }
+  .data : {
+    sdata = .;
+    *(.data .data.* .gnu.linkonce.d*)
+    . = ALIGN(4K);
+    edata = .;
+  }
 
-    /* Section is zeroed in u64 chunks, align start and end to 8 bytes */
-    .bss ALIGN(8):
-    {
-        __bss_start = .;
-        *(.bss*);
-        . = ALIGN(8);
+  .stack : {
+    . = ALIGN(4K);
+    *(.bss.stack)
+  }
 
-        /* Fill for the bss == 0 case, so that __bss_start <= __bss_end_inclusive holds */
-        . += 8;
-        __bss_end_inclusive = . - 8;
-    }
-    . = STACKTOP ;
-	stack_top = .;
+  .bss : {
+    . = ALIGN(32);
+    sbss = .;
+    *(.bss .bss.*)
+    *(COMMON)
+    . = ALIGN(4K);
+    ebss = .;
+  }
 
-    /DISCARD/ : { *(.comment*) }
+  /* end of the binary */
+  _end = ALIGN(8);
+
+  /DISCARD/ : { *(.comment) *(.gnu*) *(.note*) *(.eh_frame*) }
 }
