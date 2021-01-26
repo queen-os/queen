@@ -7,13 +7,16 @@
 #![no_std]
 
 #[macro_use]
+extern crate alloc;
+#[macro_use]
 extern crate log;
+
 #[macro_use]
 mod logging;
 #[path = "arch/aarch64/mod.rs"]
 pub mod arch;
-pub mod memory;
 pub mod consts;
+pub mod memory;
 mod panic_wait;
 pub use arch::cpu;
 

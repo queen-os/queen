@@ -12,6 +12,7 @@ smp := 4
 qemu_opts := \
 	-s \
 	-M $(board) \
+	-m 1G \
 	-cpu $(target_cpu) \
 	-smp $(smp) \
 	-serial stdio -display none \

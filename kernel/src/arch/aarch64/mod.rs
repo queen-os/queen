@@ -9,6 +9,7 @@ pub mod bsp;
 pub mod consts;
 pub mod cpu;
 pub mod memory;
+pub mod paging;
 
 static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
 
