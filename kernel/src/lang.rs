@@ -7,3 +7,8 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     }
     crate::cpu::wait_forever();
 }
+
+#[lang = "oom"]
+fn oom(_: core::alloc::Layout) -> ! {
+    panic!("out of memory");
+}

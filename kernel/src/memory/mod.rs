@@ -1,7 +1,8 @@
-use crate::consts::{KERNEL_OFFSET, MEMORY_OFFSET, PHYSICAL_MEMORY_OFFSET};
+use core::ptr::NonNull;
+
+use crate::consts::{KERNEL_HEAP_SIZE, KERNEL_OFFSET, MEMORY_OFFSET, PHYSICAL_MEMORY_OFFSET};
 use aarch64::paging::PageSize;
-use bitmap_allocator::BitAlloc;
-use spin::Mutex;
+use spin::Lazy;
 
 pub mod handler;
 mod memory_set;
@@ -21,8 +22,12 @@ pub type VirtAddr = u64;
 pub type Page = aarch64::paging::Page<aarch64::paging::Size4KiB>;
 pub type Frame = aarch64::paging::Frame<aarch64::paging::Size4KiB>;
 
-pub type FrameAlloc = bitmap_allocator::BitAlloc1M;
-pub static FRAME_ALLOCATOR: Mutex<FrameAlloc> = Mutex::new(FrameAlloc::DEFAULT);
+pub type FrameAlloc = allocators::frame::buddy_system::LockedFrameAlloc;
+pub static FRAME_ALLOCATOR: Lazy<FrameAlloc> = Lazy::new(FrameAlloc::new);
+
+pub type HeapAlloc = allocators::heap::explicit_free_list::LockedHeapAlloc;
+#[global_allocator]
+pub static HEAP_ALLOCATOR: HeapAlloc = HeapAlloc::new();
 
 pub const PAGE_SIZE: u64 = aarch64::paging::Size4KiB::SIZE;
 
@@ -44,29 +49,27 @@ pub const fn kernel_offset(addr: VirtAddr) -> VirtAddr {
     addr - KERNEL_OFFSET
 }
 
-pub fn alloc_frame() -> Option<PhysAddr> {
+pub fn alloc_frames(count: usize) -> Option<PhysAddr> {
     // get the real address of the alloc frame
-    let ret = FRAME_ALLOCATOR
-        .lock()
-        .alloc()
-        .map(|id| id as u64 * PAGE_SIZE + MEMORY_OFFSET);
-    trace!("Allocate frame: {:x?}", ret);
-    ret
+    FRAME_ALLOCATOR.lock().alloc(count).map(|id| {
+        let frame = id as u64 * PAGE_SIZE + MEMORY_OFFSET;
+        trace!("Allocate frame: {:x?}", frame);
+        frame
+    })
 }
 
-pub fn dealloc_frame(target: PhysAddr) {
+pub fn dealloc_frames(target: PhysAddr, count: usize) {
     trace!("Deallocate frame: {:x}", target);
     FRAME_ALLOCATOR
         .lock()
-        .dealloc(((target - MEMORY_OFFSET) / PAGE_SIZE) as usize);
+        .dealloc((target / PAGE_SIZE) as usize, count);
 }
 
-pub fn alloc_frame_contiguous(size: usize, align_log2: usize) -> Option<PhysAddr> {
-    // get the real address of the alloc frame
-    let ret = FRAME_ALLOCATOR
-        .lock()
-        .alloc_contiguous(size, align_log2)
-        .map(|id| id as u64 * PAGE_SIZE + MEMORY_OFFSET);
-    trace!("Allocate frame: {:x?}", ret);
-    ret
+pub fn init_heap() {
+    static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+    unsafe {
+        HEAP_ALLOCATOR
+            .lock()
+            .init(NonNull::new_unchecked(HEAP.as_mut_ptr()), KERNEL_HEAP_SIZE);
+    }
 }

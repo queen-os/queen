@@ -19,6 +19,8 @@ unsafe extern "C" fn main_start() -> ! {
     memory::init();
     crate::logging::init();
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
+    let v = vec![1u8, 2, 3];
+    println!("vector allocated on heap: {:?}", v);
     AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();
 }

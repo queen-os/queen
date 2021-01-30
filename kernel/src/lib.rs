@@ -17,7 +17,7 @@ mod logging;
 pub mod arch;
 pub mod consts;
 pub mod memory;
-mod panic_wait;
+mod lang;
 pub use arch::cpu;
 
 pub fn kmain() -> ! {

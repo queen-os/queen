@@ -1,6 +1,6 @@
 //! Page table implementations for aarch64.
 
-use crate::memory::{alloc_frame, dealloc_frame, phys_to_virt, PageTable, PageTableExt, Entry, Page};
+use crate::memory::{alloc_frames, dealloc_frames, phys_to_virt, PageTable, PageTableExt, Entry, Page};
 use aarch64::cache::*;
 use aarch64::paging::{
     Frame,
@@ -239,7 +239,7 @@ impl PageTableImpl {
             entry: None,
         })
     }
-    
+
     /// The method for getting the kernel page table.
     /// In aarch64 case kernel page table and user page table are two different tables.
     /// # Safety
@@ -285,7 +285,7 @@ impl PageTableImpl {
 
 impl PageTableExt for PageTableImpl {
     fn new_bare() -> Self {
-        let target = alloc_frame().expect("failed to allocate frame");
+        let target = alloc_frames(1).expect("failed to allocate frame");
         let frame = Frame::of_addr(target as u64);
         let table = unsafe { &mut *frame_to_page_table(frame) };
         table.clear();
@@ -322,7 +322,7 @@ impl PageTableExt for PageTableImpl {
 impl Drop for PageTableImpl {
     fn drop(&mut self) {
         info!("PageTable dropping: {:?}", self.root_frame);
-        dealloc_frame(self.root_frame.start_address().as_u64());
+        dealloc_frames(self.root_frame.start_address().as_u64(), 1);
     }
 }
 
@@ -330,12 +330,12 @@ struct FrameAllocatorForAarch64;
 
 unsafe impl FrameAllocator<Size4KiB> for FrameAllocatorForAarch64 {
     fn allocate_frame(&mut self) -> Option<Frame> {
-        alloc_frame().map(Frame::of_addr)
+        alloc_frames(1).map(Frame::of_addr)
     }
 }
 
 impl FrameDeallocator<Size4KiB> for FrameAllocatorForAarch64 {
     fn deallocate_frame(&mut self, frame: Frame) {
-        dealloc_frame(frame.start_address().as_u64());
+        dealloc_frames(frame.start_address().as_u64(), 1);
     }
 }
