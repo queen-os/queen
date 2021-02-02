@@ -8,12 +8,12 @@ use aarch64::{barrier, cache, registers::*, translation};
 global_asm!(include_str!("entry.S"));
 
 #[link_section = ".text.boot"]
-fn map_2mib(p2: &mut PageTable, start: u64, end: u64, flag: EF, attr: Attr) {
-    let aligned_start = align_down(start, ALIGN_2MIB);
-    let aligned_end = align_up(end, ALIGN_2MIB);
+fn map_2mib(p2: &mut PageTable, start: usize, end: usize, flag: EF, attr: Attr) {
+    let aligned_start = align_down(start as u64, ALIGN_2MIB);
+    let aligned_end = align_up(end as u64, ALIGN_2MIB);
     for frame in Frame::<Size2MiB>::range_of(aligned_start, aligned_end) {
         let paddr = frame.start_address();
-        let page = Page::<Size2MiB>::of_addr(phys_to_virt(paddr.as_u64()));
+        let page = Page::<Size2MiB>::of_addr(phys_to_virt(paddr.as_usize()) as u64);
         p2[page.p2_index()].set_block::<Size2MiB>(paddr, flag, attr);
     }
 }

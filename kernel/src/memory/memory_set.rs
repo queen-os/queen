@@ -23,13 +23,9 @@ impl MemoryArea {
     /// Return the size of space covered in the area.
     fn check_read_array<S>(&self, ptr: *const S, count: usize) -> usize {
         // page align
-        let min_bound =
-            (ptr as usize).max(Page::of_addr(self.start_addr).start_address().as_u64() as usize);
-        let max_bound = unsafe { ptr.add(count) as usize }.min(
-            Page::of_addr(self.end_addr + Page::SIZE - 1)
-                .start_address()
-                .as_u64() as usize,
-        );
+        let min_bound = (ptr as usize).max(Page::of_addr(self.start_addr).start_address());
+        let max_bound = unsafe { ptr.add(count) as usize }
+            .min(Page::of_addr(self.end_addr + Page::SIZE - 1).start_address());
         if max_bound >= min_bound {
             max_bound - min_bound
         } else {
@@ -60,14 +56,14 @@ impl MemoryArea {
     fn map(&self, pt: &mut dyn PageTable) {
         for page in Page::range_of(self.start_addr, self.end_addr) {
             self.handler
-                .map(pt, page.start_address().as_u64(), &self.attr);
+                .map(pt, page.start_address(), &self.attr);
         }
     }
 
     /// Unmap all pages in the area from page table `pt`
     fn unmap(&self, pt: &mut dyn PageTable) {
         for page in Page::range_of(self.start_addr, self.end_addr) {
-            self.handler.unmap(pt, page.start_address().as_u64());
+            self.handler.unmap(pt, page.start_address());
         }
     }
 }
@@ -196,7 +192,7 @@ impl<T: PageTableExt> MemorySet<T> {
     /// Find a free area with hint address `addr_hint` and length `len`.
     /// Return the start address of found free area.
     /// Used for mmap.
-    pub fn find_free_area(&self, addr_hint: u64, len: u64) -> VirtAddr {
+    pub fn find_free_area(&self, addr_hint: usize, len: usize) -> VirtAddr {
         // brute force:
         // try each area's end address as the start
         core::iter::once(addr_hint)
@@ -207,13 +203,13 @@ impl<T: PageTableExt> MemorySet<T> {
     }
 
     /// Test if [`start_addr`, `end_addr`) is a free area
-    fn test_free_area(&self, start_addr: u64, end_addr: u64) -> bool {
+    fn test_free_area(&self, start_addr: usize, end_addr: usize) -> bool {
         self.areas
             .iter()
             .find(|area| area.is_overlap_with(start_addr, end_addr))
             .is_none()
     }
-    
+
     /// Add an area to this set
     pub fn push(
         &mut self,
@@ -420,7 +416,7 @@ impl<T: PageTableExt> MemorySet<T> {
                 area.handler.clone_map(
                     &mut new_page_table,
                     page_table,
-                    page.start_address().as_u64(),
+                    page.start_address(),
                     &area.attr,
                 );
             }

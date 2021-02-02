@@ -1,19 +1,20 @@
 //! Page table implementations for aarch64.
 
-use crate::memory::{alloc_frames, dealloc_frames, phys_to_virt, PageTable, PageTableExt, Entry, Page};
+use crate::memory::{alloc_frames, dealloc_frames, phys_to_virt, Entry, PageTable, PageTableExt};
+use aarch64::addr::{align_down, align_up, PhysAddr, ALIGN_2MIB};
 use aarch64::cache::*;
 use aarch64::paging::{
-    Frame,
     mapper::{MappedPageTable, Mapper},
     memory_attribute::*,
     table::{PageTable as RawPageTable, PageTableEntry, PageTableFlags as EF},
-    FrameAllocator, FrameDeallocator, Page as PageAllSizes, Size2MiB, Size4KiB,
+    Frame, FrameAllocator, FrameDeallocator, Page as PageAllSizes, Size2MiB, Size4KiB,
 };
 use aarch64::translation::{invalidate_tlb_vaddr, local_invalidate_tlb_all};
 use aarch64::translation::{ttbr_el1_read, ttbr_el1_write};
-use aarch64::addr::{align_down, align_up, PhysAddr, ALIGN_2MIB};
 use core::mem::ManuallyDrop;
 use log::*;
+
+type Page = PageAllSizes<Size4KiB>;
 
 pub struct PageTableImpl {
     page_table: MappedPageTable<'static, fn(Frame) -> *mut RawPageTable>,
@@ -24,14 +25,14 @@ pub struct PageTableImpl {
 pub struct PageEntry(&'static mut PageTableEntry, Page);
 
 impl PageTable for PageTableImpl {
-    fn map(&mut self, addr: u64, target: u64) -> &mut dyn Entry {
+    fn map(&mut self, addr: usize, target: usize) -> &mut dyn Entry {
         let flags = EF::default_page() | EF::PXN | EF::UXN;
         let attr = MairNormal::attr_value();
         unsafe {
             self.page_table
                 .map_to(
-                    Page::of_addr(addr),
-                    Frame::of_addr(target),
+                    Page::of_addr(addr as u64),
+                    Frame::of_addr(target as u64),
                     flags,
                     attr,
                     &mut FrameAllocatorForAarch64,
@@ -42,16 +43,16 @@ impl PageTable for PageTableImpl {
         self.get_entry(addr).expect("fail to get entry")
     }
 
-    fn unmap(&mut self, addr: u64) {
+    fn unmap(&mut self, addr: usize) {
         self.page_table
-            .unmap(Page::of_addr(addr))
+            .unmap(Page::of_addr(addr as u64))
             .unwrap()
             .1
             .flush();
     }
 
-    fn get_entry(&mut self, vaddr: u64) -> Option<&mut dyn Entry> {
-        let page = Page::of_addr(vaddr);
+    fn get_entry(&mut self, vaddr: usize) -> Option<&mut dyn Entry> {
+        let page = Page::of_addr(vaddr as u64);
         if let Ok(e) = self.page_table.get_entry_mut(page) {
             let e = unsafe { &mut *(e as *mut PageTableEntry) };
             self.entry = Some(PageEntry(e, page));
@@ -61,16 +62,16 @@ impl PageTable for PageTableImpl {
         }
     }
 
-    fn get_page_slice_mut<'a>(&mut self, addr: u64) -> &'a mut [u8] {
+    fn get_page_slice_mut<'a>(&mut self, addr: usize) -> &'a mut [u8] {
         let frame = self
             .page_table
-            .translate_page(Page::of_addr(addr))
+            .translate_page(Page::of_addr(addr as u64))
             .unwrap();
-        let vaddr = phys_to_virt(frame.start_address().as_u64());
+        let vaddr = phys_to_virt(frame.start_address().as_usize());
         unsafe { core::slice::from_raw_parts_mut(vaddr as *mut u8, 0x1000) }
     }
 
-    fn flush_cache_copy_user(&mut self, start: u64, end: u64, execute: bool) {
+    fn flush_cache_copy_user(&mut self, start: usize, end: usize, execute: bool) {
         if execute {
             // clean D-cache to PoU to ensure new instructions has been written
             // into memory
@@ -91,7 +92,7 @@ impl PageTable for PageTableImpl {
 }
 
 fn frame_to_page_table(frame: Frame) -> *mut RawPageTable {
-    let vaddr = phys_to_virt(frame.start_address().as_u64());
+    let vaddr = phys_to_virt(frame.start_address().as_usize());
     vaddr as *mut RawPageTable
 }
 
@@ -136,10 +137,10 @@ impl Entry for PageEntry {
     fn set_present(&mut self, value: bool) {
         self.as_flags().set(EF::VALID, value);
     }
-    fn target(&self) -> u64 {
-        self.0.addr().as_u64()
+    fn target(&self) -> usize {
+        self.0.addr().as_usize()
     }
-    fn set_target(&mut self, target: u64) {
+    fn set_target(&mut self, target: usize) {
         self.0
             .set_addr(PhysAddr::new(target as u64), self.0.flags(), self.0.attr());
     }
@@ -271,7 +272,7 @@ impl PageTableImpl {
         let attr = MairNormal::attr_value();
         for frame in Frame::<Size2MiB>::range_of(aligned_start, aligned_end) {
             let paddr = frame.start_address();
-            let vaddr = phys_to_virt(paddr.as_u64());
+            let vaddr = phys_to_virt(paddr.as_usize());
             let page = PageAllSizes::<Size2MiB>::of_addr(vaddr as u64);
             unsafe {
                 self.page_table
@@ -322,7 +323,7 @@ impl PageTableExt for PageTableImpl {
 impl Drop for PageTableImpl {
     fn drop(&mut self) {
         info!("PageTable dropping: {:?}", self.root_frame);
-        dealloc_frames(self.root_frame.start_address().as_u64(), 1);
+        dealloc_frames(self.root_frame.start_address().as_usize(), 1);
     }
 }
 
@@ -330,12 +331,12 @@ struct FrameAllocatorForAarch64;
 
 unsafe impl FrameAllocator<Size4KiB> for FrameAllocatorForAarch64 {
     fn allocate_frame(&mut self) -> Option<Frame> {
-        alloc_frames(1).map(Frame::of_addr)
+        alloc_frames(1).map(|addr| Frame::of_addr(addr as u64))
     }
 }
 
 impl FrameDeallocator<Size4KiB> for FrameAllocatorForAarch64 {
     fn deallocate_frame(&mut self, frame: Frame) {
-        dealloc_frames(frame.start_address().as_u64(), 1);
+        dealloc_frames(frame.start_address().as_usize(), 1);
     }
 }

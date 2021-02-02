@@ -1,7 +1,6 @@
 use core::ptr::NonNull;
 
 use crate::consts::{KERNEL_HEAP_SIZE, KERNEL_OFFSET, MEMORY_OFFSET, PHYSICAL_MEMORY_OFFSET};
-use aarch64::paging::PageSize;
 use spin::Lazy;
 
 pub mod handler;
@@ -10,17 +9,15 @@ mod paging;
 
 pub use handler::MemoryHandler;
 pub use memory_set::{MemoryArea, MemoryAttr, MemorySet};
-pub use paging::{Entry, PageTable, PageTableExt};
+pub use paging::{Entry, PageTable, PageTableExt, Page, PageRange};
 
 pub enum VMError {
     InvalidPtr,
 }
 pub type VMResult<T> = Result<T, VMError>;
 
-pub type PhysAddr = u64;
-pub type VirtAddr = u64;
-pub type Page = aarch64::paging::Page<aarch64::paging::Size4KiB>;
-pub type Frame = aarch64::paging::Frame<aarch64::paging::Size4KiB>;
+pub type PhysAddr = usize;
+pub type VirtAddr = usize;
 
 pub type FrameAlloc = allocators::frame::buddy_system::LockedFrameAlloc;
 pub static FRAME_ALLOCATOR: Lazy<FrameAlloc> = Lazy::new(FrameAlloc::new);
@@ -29,12 +26,12 @@ pub type HeapAlloc = allocators::heap::explicit_free_list::LockedHeapAlloc;
 #[global_allocator]
 pub static HEAP_ALLOCATOR: HeapAlloc = HeapAlloc::new();
 
-pub const PAGE_SIZE: u64 = aarch64::paging::Size4KiB::SIZE;
+pub const PAGE_SIZE: usize = 1 << 12;
 
 /// Convert physical address to virtual address
 #[inline]
 pub const fn phys_to_virt(addr: PhysAddr) -> VirtAddr {
-    PHYSICAL_MEMORY_OFFSET as u64 + addr
+    PHYSICAL_MEMORY_OFFSET + addr
 }
 
 /// Convert virtual address to physical address
@@ -52,7 +49,7 @@ pub const fn kernel_offset(addr: VirtAddr) -> VirtAddr {
 pub fn alloc_frames(count: usize) -> Option<PhysAddr> {
     // get the real address of the alloc frame
     FRAME_ALLOCATOR.lock().alloc(count).map(|id| {
-        let frame = id as u64 * PAGE_SIZE + MEMORY_OFFSET;
+        let frame = id * PAGE_SIZE + MEMORY_OFFSET;
         trace!("Allocate frame: {:x?}", frame);
         frame
     })
