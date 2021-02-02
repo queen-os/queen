@@ -15,9 +15,9 @@ static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
 unsafe extern "C" fn main_start() -> ! {
+    crate::logging::init();
     cpu::start_others();
     memory::init();
-    crate::logging::init();
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
     AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();
@@ -29,5 +29,6 @@ extern "C" fn others_start() -> ! {
     while !AP_CAN_INIT.load(Ordering::Acquire) {
         spin_loop()
     }
+    memory::init_other();
     crate::kmain();
 }

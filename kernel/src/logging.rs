@@ -38,6 +38,26 @@ macro_rules! println {
     })
 }
 
+macro_rules! dbg {
+    () => {
+        $crate::println!("[{}:{}]", core::file!(), core::line!());
+    };
+    ($val:expr $(,)?) => {
+        // Use of `match` here is intentional because it affects the lifetimes
+        // of temporaries - https://stackoverflow.com/a/48732525/1063961
+        match $val {
+            tmp => {
+                $crate::println!("[{}:{}] {} = {:#?}",
+                    core::file!(), core::line!(), core::stringify!($val), &tmp);
+                tmp
+            }
+        }
+    };
+    ($($val:expr),+ $(,)?) => {
+        ($($crate::dbg!($val)),+,)
+    };
+}
+
 /// Add escape sequence to print with color in Linux console
 macro_rules! with_color {
     ($args: ident, $color_code: ident) => {{

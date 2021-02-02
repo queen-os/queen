@@ -18,7 +18,7 @@ qemu_opts := \
 	-serial stdio -display none \
 	-kernel $(kernel)
 
-export LOG = info
+LOG := info
 
 ifeq ($(mode), release)
 build_args += --release

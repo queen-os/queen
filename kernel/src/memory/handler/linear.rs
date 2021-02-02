@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Linear {
-    offset: i64,
+    offset: isize,
 }
 
 impl MemoryHandler for Linear {
@@ -11,7 +11,7 @@ impl MemoryHandler for Linear {
     }
 
     fn map(&self, pt: &mut dyn PageTable, addr: VirtAddr, attr: &MemoryAttr) {
-        let target = (addr as i64 + self.offset) as PhysAddr;
+        let target = (addr as isize + self.offset) as PhysAddr;
         let entry = pt.map(addr, target);
         attr.apply(entry);
     }
@@ -36,7 +36,7 @@ impl MemoryHandler for Linear {
 }
 
 impl Linear {
-    pub fn new(offset: i64) -> Self {
+    pub fn new(offset: isize) -> Self {
         Linear { offset }
     }
 }

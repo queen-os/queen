@@ -1,10 +1,10 @@
 //! Page table implementations for aarch64.
 
-use crate::memory::{alloc_frames, dealloc_frames, phys_to_virt, Entry, PageTable, PageTableExt};
+use crate::{consts::PHYSICAL_MEMORY_OFFSET, memory::{alloc_frames, dealloc_frames, phys_to_virt, Entry, PageTable, PageTableExt}};
 use aarch64::addr::{align_down, align_up, PhysAddr, ALIGN_2MIB};
 use aarch64::cache::*;
 use aarch64::paging::{
-    mapper::{MappedPageTable, Mapper},
+    mapper::{OffsetPageTable, Mapper},
     memory_attribute::*,
     table::{PageTable as RawPageTable, PageTableEntry, PageTableFlags as EF},
     Frame, FrameAllocator, FrameDeallocator, Page as PageAllSizes, Size2MiB, Size4KiB,
@@ -17,7 +17,7 @@ use log::*;
 type Page = PageAllSizes<Size4KiB>;
 
 pub struct PageTableImpl {
-    page_table: MappedPageTable<'static, fn(Frame) -> *mut RawPageTable>,
+    page_table: OffsetPageTable<'static>,
     root_frame: Frame,
     entry: Option<PageEntry>,
 }
@@ -235,7 +235,7 @@ impl PageTableImpl {
         let frame = Frame::of_addr(PageTableImpl::active_token() as u64);
         let table = &mut *frame_to_page_table(frame);
         ManuallyDrop::new(PageTableImpl {
-            page_table: MappedPageTable::new(table, frame_to_page_table),
+            page_table: OffsetPageTable::new(table, PHYSICAL_MEMORY_OFFSET.into()),
             root_frame: frame,
             entry: None,
         })
@@ -248,17 +248,18 @@ impl PageTableImpl {
         let frame = Frame::of_addr(ttbr_el1_read(1).start_address().as_u64());
         let table = &mut *frame_to_page_table(frame);
         ManuallyDrop::new(PageTableImpl {
-            page_table: MappedPageTable::new(table, frame_to_page_table),
+            page_table: OffsetPageTable::new(table, PHYSICAL_MEMORY_OFFSET.into()),
             root_frame: frame,
             entry: None,
         })
     }
 
-    /// Activate as kernel page table (TTBR1_EL1).
+    /// Activate as kernel page table (TTBR0_EL1).
     /// Used in `arch::memory::map_kernel()`.
     /// # Safety
     pub unsafe fn activate_as_kernel(&self) {
-        ttbr_el1_write(1, Frame::of_addr(self.token() as u64));
+        // TODO: change to TTBR1_EL1
+        ttbr_el1_write(0, Frame::of_addr(self.token() as u64));
         local_invalidate_tlb_all();
     }
 
@@ -292,7 +293,7 @@ impl PageTableExt for PageTableImpl {
         table.clear();
         unsafe {
             PageTableImpl {
-                page_table: MappedPageTable::new(table, frame_to_page_table),
+                page_table: OffsetPageTable::new(table, PHYSICAL_MEMORY_OFFSET.into()),
                 root_frame: frame,
                 entry: None,
             }

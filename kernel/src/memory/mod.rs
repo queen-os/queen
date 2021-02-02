@@ -8,8 +8,9 @@ mod memory_set;
 mod paging;
 
 pub use handler::MemoryHandler;
-pub use memory_set::{MemoryArea, MemoryAttr, MemorySet};
+pub use memory_set::{MemoryArea, MemoryAttr};
 pub use paging::{Entry, PageTable, PageTableExt, Page, PageRange};
+pub use crate::arch::paging::*;
 
 pub enum VMError {
     InvalidPtr,
@@ -18,6 +19,8 @@ pub type VMResult<T> = Result<T, VMError>;
 
 pub type PhysAddr = usize;
 pub type VirtAddr = usize;
+
+pub type MemorySet = memory_set::MemorySet<PageTableImpl>;
 
 pub type FrameAlloc = allocators::frame::buddy_system::LockedFrameAlloc;
 pub static FRAME_ALLOCATOR: Lazy<FrameAlloc> = Lazy::new(FrameAlloc::new);

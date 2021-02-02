@@ -1,4 +1,4 @@
-use super::bsp::{PERIPHERALS_END, PERIPHERALS_START, MEMORY_START, MEMORY_END};
+use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
 use crate::memory::phys_to_virt;
 use aarch64::addr::{align_down, align_up, ALIGN_2MIB};
 use aarch64::paging::{memory_attribute::*, PageTableAttribute as Attr, PageTableFlags as EF};
@@ -36,6 +36,9 @@ pub extern "C" fn create_init_paging() {
 
     // 0x0000_0000_0000 ~ 0x0080_0000_0000
     p4[0].set_frame(frame_lvl3, EF::default_table(), Attr::new(0, 0, 0));
+    // 0x8000_0000_0000 ~ 0x8080_0000_0000
+    p4[256].set_frame(frame_lvl3, EF::default_table(), Attr::new(0, 0, 0));
+
     // 0x0000_0000 ~ 0x4000_0000
     p3[0].set_frame(frame_lvl2_0, EF::default_table(), Attr::new(0, 0, 0));
     // 0x4000_0000 ~ 0x8000_0000
