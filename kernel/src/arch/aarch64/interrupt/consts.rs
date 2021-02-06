@@ -12,10 +12,10 @@ pub fn is_page_fault(trap: usize) -> bool {
     let syndrome = Syndrome::from(esr);
     match syndrome {
         Syndrome::DataAbort { kind, level: _ } | Syndrome::InstructionAbort { kind, level: _ } => {
-            match kind {
-                Fault::Translation | Fault::AccessFlag | Fault::Permission => true,
-                _ => false,
-            }
+            matches!(
+                kind,
+                Fault::Translation | Fault::AccessFlag | Fault::Permission
+            )
         }
         _ => false,
     }

@@ -1,4 +1,5 @@
 use aarch64::asm;
+pub use aarch64::asm::nop;
 
 pub fn halt() {
     asm::wfi();

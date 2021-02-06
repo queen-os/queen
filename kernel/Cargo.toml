@@ -16,3 +16,4 @@ aarch64 = { path = "../aarch64" }
 allocators = { git = "https://github.com/songzhi/allocators" }
 log = "0.4"
 spin = "0.7"
+register = "1.0"

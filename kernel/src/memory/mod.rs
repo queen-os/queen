@@ -73,3 +73,14 @@ pub fn init_heap() {
             .init(NonNull::new_unchecked(HEAP.as_mut_ptr()), KERNEL_HEAP_SIZE);
     }
 }
+
+/// Handle page fault at `addr`.
+/// Return true to continue, false to halt.
+pub fn handle_page_fault(addr: usize) -> bool {
+    debug!("page fault from kernel @ {:#x}", addr);
+    // TODO
+    // let thread = current_thread().unwrap();
+    // let mut lock = thread.vm.lock();
+    // lock.handle_page_fault(addr)
+    false
+}
