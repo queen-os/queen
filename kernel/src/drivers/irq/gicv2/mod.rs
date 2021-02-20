@@ -1,24 +1,27 @@
 use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
 
-use crate::{drivers::Driver, sync::spin::MutexNoIrq};
+use crate::{
+    drivers::{self, Driver},
+    sync::spin::MutexNoIrq,
+};
 
-use super::IRQManager;
+use super::IrqManager;
 
 mod gicc;
 mod gicd;
 
 /// Representation of the GIC.
-pub struct GICv2 {
+pub struct GicV2 {
     /// The Distributor.
-    gicd: gicd::GICD,
+    gicd: gicd::GicD,
 
     /// The CPU Interface.
-    gicc: gicc::GICC,
+    gicc: gicc::GicC,
 
     irq_map: MutexNoIrq<BTreeMap<usize, Vec<Arc<dyn Driver>>>>,
 }
 
-impl GICv2 {
+impl GicV2 {
     /// Create an instance.
     ///
     /// # Safety
@@ -26,19 +29,19 @@ impl GICv2 {
     /// - The user must ensure to provide a correct MMIO start address.
     pub unsafe fn new(gicd_mmio_start_addr: usize, gicc_mmio_start_addr: usize) -> Self {
         Self {
-            gicd: gicd::GICD::new(gicd_mmio_start_addr),
-            gicc: gicc::GICC::new(gicc_mmio_start_addr),
+            gicd: gicd::GicD::new(gicd_mmio_start_addr),
+            gicc: gicc::GicC::new(gicc_mmio_start_addr),
             irq_map: MutexNoIrq::new(BTreeMap::new()),
         }
     }
 }
 
-impl Driver for GICv2 {
+impl Driver for GicV2 {
     fn compatible(&self) -> &'static str {
         "GICv2 (ARM Generic Interrupt Controller v2)"
     }
 
-    fn init(&self) -> Result<(), ()> {
+    fn init(&self) -> drivers::Result<()> {
         if crate::cpu::id() == crate::arch::bsp::BOOT_CORE_ID {
             self.gicd.boot_core_init();
         }
@@ -48,10 +51,14 @@ impl Driver for GICv2 {
 
         Ok(())
     }
+
+    fn device_type(&self) -> drivers::DeviceType {
+        drivers::DeviceType::Intc
+    }
 }
 
-impl IRQManager for GICv2 {
-    fn register_local_irq(&self, irq_num: usize, driver: Arc<dyn Driver>) -> Result<(), ()> {
+impl IrqManager for GicV2 {
+    fn register_local_irq(&self, irq_num: usize, driver: Arc<dyn Driver>) -> drivers::Result<()> {
         let mut map = self.irq_map.lock();
         map.entry(irq_num).or_insert_with(Vec::new).push(driver);
 

@@ -7,9 +7,8 @@
 //! # Glossary
 //!   - SPI - Shared Peripheral Interrupt.
 
-use crate::drivers::common::MMIODerefWrapper;
+use crate::{drivers::common::MMIODerefWrapper, sync::spin::MutexNoIrq};
 use register::{mmio::*, register_bitfields, register_structs};
-use crate::sync::spin::MutexNoIrq;
 
 register_bitfields! {
     u32,
@@ -64,7 +63,7 @@ type SharedRegisters = MMIODerefWrapper<SharedRegisterBlock>;
 type BankedRegisters = MMIODerefWrapper<BankedRegisterBlock>;
 
 /// Representation of the GIC Distributor.
-pub struct GICD {
+pub struct GicD {
     /// Access to shared registers is guarded with a lock.
     shared_registers: MutexNoIrq<SharedRegisters>,
 
@@ -78,7 +77,7 @@ pub struct GICD {
 
 impl SharedRegisters {
     /// Return the number of IRQs that this HW implements.
-    #[inline(always)]
+    #[inline]
     fn num_irqs(&mut self) -> usize {
         // Query number of implemented IRQs.
         //
@@ -87,7 +86,7 @@ impl SharedRegisters {
     }
 
     /// Return a slice of the implemented ITARGETSR.
-    #[inline(always)]
+    #[inline]
     fn implemented_itargets_slice(&mut self) -> &[ReadWrite<u32, ITARGETSR::Register>] {
         assert!(self.num_irqs() >= 36);
 
@@ -103,7 +102,7 @@ impl SharedRegisters {
     }
 }
 
-impl GICD {
+impl GicD {
     /// Create an instance.
     ///
     /// # Safety

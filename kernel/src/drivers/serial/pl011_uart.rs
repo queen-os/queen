@@ -1,11 +1,11 @@
 use crate::{
     cpu,
-    drivers::{common::MMIODerefWrapper, Driver},
+    drivers::{self, common::MMIODerefWrapper, Driver},
     sync::spin::MutexNoIrq,
 };
 use core::fmt;
-use fmt::Write;
 use register::{mmio::*, register_bitfields, register_structs};
+
 // PL011 UART registers.
 //
 // Descriptions taken from "PrimeCell UART (PL011) Technical Reference Manual" r1p5.
@@ -207,25 +207,27 @@ enum BlockingMode {
 // Public Definitions
 //--------------------------------------------------------------------------------------------------
 
-pub struct PL011UartInner {
+pub struct Pl011UartInner {
     registers: Registers,
     chars_written: usize,
     chars_read: usize,
 }
 
 // Export the inner struct so that BSPs can use it for the panic handler.
-pub use PL011UartInner as PanicUart;
+pub use Pl011UartInner as PanicUart;
+
+use super::SerialDriver;
 
 /// Representation of the UART.
-pub struct PL011Uart {
-    inner: MutexNoIrq<PL011UartInner>,
+pub struct Pl011Uart {
+    inner: MutexNoIrq<Pl011UartInner>,
 }
 
 //--------------------------------------------------------------------------------------------------
 // Public Code
 //--------------------------------------------------------------------------------------------------
 
-impl PL011UartInner {
+impl Pl011UartInner {
     /// Create an instance.
     ///
     /// # Safety
@@ -360,7 +362,7 @@ impl PL011UartInner {
 /// See [`src/print.rs`].
 ///
 /// [`src/print.rs`]: ../../print/index.html
-impl fmt::Write for PL011UartInner {
+impl fmt::Write for Pl011UartInner {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.chars() {
             self.write_char(c);
@@ -370,7 +372,7 @@ impl fmt::Write for PL011UartInner {
     }
 }
 
-impl PL011Uart {
+impl Pl011Uart {
     /// Create an instance.
     ///
     /// # Safety
@@ -378,22 +380,53 @@ impl PL011Uart {
     /// - The user must ensure to provide a correct MMIO start address.
     pub const unsafe fn new(mmio_start_addr: usize) -> Self {
         Self {
-            inner: MutexNoIrq::new(PL011UartInner::new(mmio_start_addr)),
+            inner: MutexNoIrq::new(Pl011UartInner::new(mmio_start_addr)),
         }
     }
 }
 
-impl Driver for PL011Uart {
+impl Driver for Pl011Uart {
     fn compatible(&self) -> &'static str {
         "BCM PL011 UART"
     }
 
-    fn init(&self) -> Result<(), ()> {
+    fn init(&self) -> drivers::Result<()> {
         self.inner.lock().init();
         Ok(())
     }
 
     fn handle_interrupt(&self) {
         println!("UART");
+    }
+
+    fn device_type(&self) -> drivers::DeviceType {
+        drivers::DeviceType::Serial
+    }
+}
+
+impl SerialDriver for Pl011Uart {
+    fn write_char(&self, c: char) {
+        self.inner.lock().write_char(c);
+    }
+
+    fn flush(&self) {
+        self.inner.lock().flush();
+    }
+
+    fn read_char(&self) -> char {
+        self.inner
+            .lock()
+            .read_char_converting(BlockingMode::Blocking)
+            .unwrap()
+    }
+
+    fn clear_rx(&self) {
+        // Read from the RX FIFO until it is indicating empty.
+        while self
+            .inner
+            .lock()
+            .read_char_converting(BlockingMode::NonBlocking)
+            .is_some()
+        {}
     }
 }

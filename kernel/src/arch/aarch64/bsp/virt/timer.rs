@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use aarch64::registers::*;
 
-use crate::drivers::Driver;
+use crate::drivers::{self, Driver};
 #[derive(Debug, Default)]
 pub struct GenericTimer {}
 
@@ -38,7 +38,7 @@ impl GenericTimer {
 }
 
 impl Driver for GenericTimer {
-    fn init(&self) -> Result<(), ()> {
+    fn init(&self) -> drivers::Result<()> {
         CNTV_CTL_EL0.write(CNTV_CTL_EL0::ENABLE::SET);
         Ok(())
     }
@@ -48,7 +48,10 @@ impl Driver for GenericTimer {
     }
 
     fn handle_interrupt(&self) {
-        println!("Timer: {}", self.read().as_secs_f32());
         self.tick_in(1000 * 1000);
+    }
+
+    fn device_type(&self) -> drivers::DeviceType {
+        drivers::DeviceType::Timer
     }
 }

@@ -12,12 +12,12 @@ unsafe impl<T: Send> Sync for MutexNoIrq<T> {}
 unsafe impl<T: Send> Send for MutexNoIrq<T> {}
 
 impl<T> MutexNoIrq<T> {
-    #[inline(always)]
+    #[inline]
     pub const fn new(value: T) -> Self {
         Self(Mutex::new(value))
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn into_inner(self) -> T {
         self.0.into_inner()
     }
@@ -30,7 +30,7 @@ impl<T> MutexNoIrq<T> {
     ///
     /// This function provides no synchronization guarantees and so its result should be considered 'out of date'
     /// the instant it is called. Do not use it for synchronization purposes. However, it may be useful as a heuristic.
-    #[inline(always)]
+    #[inline]
     pub fn is_locked(&self) -> bool {
         self.0.is_locked()
     }
@@ -39,7 +39,7 @@ impl<T> MutexNoIrq<T> {
     ///
     /// The returned value may be dereferenced for data access
     /// and the lock will be dropped when the guard falls out of scope.
-    #[inline(always)]
+    #[inline]
     pub fn lock(&self) -> MutexGuardNoIrq<T> {
         MutexGuardNoIrq::new(self.0.lock())
     }
@@ -51,13 +51,13 @@ impl<T> MutexNoIrq<T> {
     /// This is *extremely* unsafe if the lock is not held by the current
     /// thread. However, this can be useful in some instances for exposing the
     /// lock to FFI that doesn't know how to deal with RAII.
-    #[inline(always)]
+    #[inline]
     pub unsafe fn force_unlock(&self) {
         self.0.force_unlock()
     }
 
     /// Try to lock this [`Mutex`], returning a lock guard if successful.
-    #[inline(always)]
+    #[inline]
     pub fn try_lock(&self) -> Option<MutexGuardNoIrq<T>> {
         self.0.try_lock().map(|guard| MutexGuardNoIrq::new(guard))
     }
@@ -67,7 +67,7 @@ impl<T> MutexNoIrq<T> {
     /// Since this call borrows the [`Mutex`] mutably, and a mutable reference is guaranteed to be exclusive in Rust,
     /// no actual locking needs to take place -- the mutable borrow statically guarantees no locks exist. As such,
     /// this is a 'zero-cost' operation.
-    #[inline(always)]
+    #[inline]
     pub fn get_mut(&mut self) -> &mut T {
         self.0.get_mut()
     }

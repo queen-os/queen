@@ -1,9 +1,15 @@
 use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
 use crate::memory::phys_to_virt;
-use aarch64::addr::{align_down, align_up, ALIGN_2MIB};
-use aarch64::paging::{memory_attribute::*, PageTableAttribute as Attr, PageTableFlags as EF};
-use aarch64::paging::{Frame, Page, PageTable, Size2MiB, Size4KiB};
-use aarch64::{barrier, cache, registers::*, translation};
+use aarch64::{
+    addr::{align_down, align_up, ALIGN_2MIB},
+    barrier, cache,
+    paging::{
+        memory_attribute::*, Frame, Page, PageTable, PageTableAttribute as Attr,
+        PageTableFlags as EF, Size2MiB, Size4KiB,
+    },
+    registers::*,
+    translation,
+};
 
 global_asm!(include_str!("entry.S"));
 

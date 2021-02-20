@@ -2,7 +2,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-  . = 0x40080000; /* Load the kernel at this address. */
+  . = 0x42000000; /* Load the kernel at this address. */
 
   .text : {
     stext = .;

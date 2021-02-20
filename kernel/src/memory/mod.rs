@@ -7,15 +7,15 @@ pub mod handler;
 mod memory_set;
 mod paging;
 
+pub use crate::arch::paging::*;
 pub use handler::MemoryHandler;
 pub use memory_set::{MemoryArea, MemoryAttr};
-pub use paging::{Entry, PageTable, PageTableExt, Page, PageRange};
-pub use crate::arch::paging::*;
+pub use paging::{Entry, Page, PageRange, PageTable, PageTableExt};
 
-pub enum VMError {
+pub enum VmError {
     InvalidPtr,
 }
-pub type VMResult<T> = Result<T, VMError>;
+pub type VmResult<T> = Result<T, VmError>;
 
 pub type PhysAddr = usize;
 pub type VirtAddr = usize;

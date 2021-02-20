@@ -1,7 +1,9 @@
 use super::*;
 use alloc::{boxed::Box, vec::Vec};
-use core::fmt::{Debug, Error, Formatter};
-use core::mem::size_of;
+use core::{
+    fmt::{Debug, Error, Formatter},
+    mem::size_of,
+};
 
 /// A continuous memory space with the same attribute
 #[derive(Debug, Clone)]
@@ -55,8 +57,7 @@ impl MemoryArea {
     /// Map all pages in the area to page table `pt`
     fn map(&self, pt: &mut dyn PageTable) {
         for page in Page::range_of(self.start_addr, self.end_addr) {
-            self.handler
-                .map(pt, page.start_address(), &self.attr);
+            self.handler.map(pt, page.start_address(), &self.attr);
         }
     }
 
@@ -145,13 +146,13 @@ impl<T: PageTableExt> MemorySet<T> {
 
     /// Check the pointer is within the readable memory
     /// # Safety
-    pub unsafe fn check_read_ptr<S>(&self, ptr: *const S) -> VMResult<&'static S> {
+    pub unsafe fn check_read_ptr<S>(&self, ptr: *const S) -> VmResult<&'static S> {
         self.check_read_array(ptr, 1).map(|s| &s[0])
     }
 
     /// Check the pointer is within the writable memory
     /// # Safety
-    pub unsafe fn check_write_ptr<S>(&self, ptr: *mut S) -> VMResult<&'static mut S> {
+    pub unsafe fn check_write_ptr<S>(&self, ptr: *mut S) -> VmResult<&'static mut S> {
         self.check_write_array(ptr, 1).map(|s| &mut s[0])
     }
 
@@ -161,7 +162,7 @@ impl<T: PageTableExt> MemorySet<T> {
         &self,
         ptr: *const S,
         count: usize,
-    ) -> VMResult<&'static [S]> {
+    ) -> VmResult<&'static [S]> {
         let mut valid_size = 0;
         for area in self.areas.iter() {
             valid_size += area.check_read_array(ptr, count);
@@ -169,7 +170,7 @@ impl<T: PageTableExt> MemorySet<T> {
                 return Ok(core::slice::from_raw_parts(ptr, count));
             }
         }
-        Err(VMError::InvalidPtr)
+        Err(VmError::InvalidPtr)
     }
 
     /// Check the array is within the writable memory
@@ -178,7 +179,7 @@ impl<T: PageTableExt> MemorySet<T> {
         &self,
         ptr: *mut S,
         count: usize,
-    ) -> VMResult<&'static mut [S]> {
+    ) -> VmResult<&'static mut [S]> {
         let mut valid_size = 0;
         for area in self.areas.iter() {
             valid_size += area.check_write_array(ptr, count);
@@ -186,7 +187,7 @@ impl<T: PageTableExt> MemorySet<T> {
                 return Ok(core::slice::from_raw_parts_mut(ptr, count));
             }
         }
-        Err(VMError::InvalidPtr)
+        Err(VmError::InvalidPtr)
     }
 
     /// Find a free area with hint address `addr_hint` and length `len`.

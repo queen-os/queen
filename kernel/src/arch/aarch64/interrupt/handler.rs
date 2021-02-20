@@ -1,13 +1,12 @@
 //! Trap handler
 
-use crate::drivers::irq::IRQManager;
+use crate::drivers::irq::IrqManager;
 
 use super::{
     syndrome::{Fault, Syndrome},
     IRQ_MANAGER,
 };
-use aarch64::registers::*;
-use aarch64::trap::TrapFrame;
+use aarch64::{registers::*, trap::TrapFrame};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum Kind {

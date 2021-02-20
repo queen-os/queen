@@ -55,7 +55,7 @@ type Registers = MMIODerefWrapper<RegisterBlock>;
 //--------------------------------------------------------------------------------------------------
 
 /// Representation of the GIC CPU interface.
-pub struct GICC {
+pub struct GicC {
     registers: Registers,
 }
 
@@ -63,7 +63,7 @@ pub struct GICC {
 // Public Code
 //--------------------------------------------------------------------------------------------------
 
-impl GICC {
+impl GicC {
     /// Create an instance.
     ///
     /// # Safety

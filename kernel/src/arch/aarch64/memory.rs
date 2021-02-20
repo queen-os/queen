@@ -1,6 +1,8 @@
-use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
+use core::ops::Range;
+
+use super::bsp::{PERIPHERALS_END, PERIPHERALS_START};
 use crate::{
-    consts::{KERNEL_OFFSET, MEMORY_OFFSET},
+    consts::KERNEL_OFFSET,
     memory::{
         handler::Linear, init_heap, MMIOType, MemoryAttr, MemorySet, FRAME_ALLOCATOR, PAGE_SIZE,
     },
@@ -14,10 +16,15 @@ use spin::Mutex;
 
 static KERNEL_MEMORY_SET: Mutex<Option<MemorySet>> = Mutex::new(None);
 
-pub fn init() {
+#[derive(Debug, Clone)]
+pub struct MemInitOpts {
+    phys_mem_range: Range<usize>,
+}
+
+pub fn init(opts: MemInitOpts) {
     init_heap();
-    init_frame_allocator();
-    map_kernel();
+    init_frame_allocator(&opts);
+    map_kernel(&opts);
     info!("memory: init end");
 }
 
@@ -27,15 +34,15 @@ pub fn init_other() {
     }
 }
 
-fn init_frame_allocator() {
-    let page_start = ((MEMORY_START - MEMORY_OFFSET) / PAGE_SIZE) as usize;
-    let page_end = ((MEMORY_END - MEMORY_OFFSET - 1) / PAGE_SIZE + 1) as usize;
+fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
+    let page_start = ((_end as usize - phys_mem_range.start) / PAGE_SIZE) as usize;
+    let page_end = ((phys_mem_range.len() - 1) / PAGE_SIZE + 1) as usize;
     FRAME_ALLOCATOR.lock().insert(page_start..page_end);
     info!("FrameAllocator init end");
 }
 
 /// Create fine-grained mappings for the kernel
-fn map_kernel() {
+fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     let offset = -(KERNEL_OFFSET as isize);
     let mut ms = MemorySet::new();
     ms.push(
@@ -83,7 +90,7 @@ fn map_kernel() {
     );
 
     let page_table = ms.get_page_table_mut();
-    page_table.map_physical_memory(MEMORY_START, MEMORY_END);
+    page_table.map_physical_memory(phys_mem_range.start, phys_mem_range.end);
     unsafe { page_table.activate_as_kernel() };
     *KERNEL_MEMORY_SET.lock() = Some(ms);
 

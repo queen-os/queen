@@ -16,4 +16,5 @@ aarch64 = { path = "../aarch64" }
 allocators = { git = "https://github.com/songzhi/allocators" }
 log = "0.4"
 spin = "0.7"
-register = "1.0"
+register = {version = "1.0", features = ["no_std_unit_tests"]}
+fdt-rs = { version = "0.4", default-features = false }

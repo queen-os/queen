@@ -3,28 +3,28 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use crate::drivers::Driver;
+use crate::drivers::rtc::pl031::Pl031Rtc;
 
 mod boot;
 #[cfg_attr(feature = "bsp_virt", path = "bsp/virt/mod.rs")]
 pub mod bsp;
 pub mod consts;
 pub mod cpu;
+pub mod interrupt;
 pub mod memory;
 pub mod paging;
-pub mod interrupt;
 
 static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
-#[allow(unconditional_panic)]
 unsafe extern "C" fn main_start() -> ! {
     crate::logging::init();
-    cpu::start_others();
-    memory::init();
-    interrupt::init();
-    println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
-    AP_CAN_INIT.store(true, Ordering::Release);
+
+    // cpu::start_others();
+    // memory::init();
+    // interrupt::init();
+    // println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
+    // AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();
 }
 

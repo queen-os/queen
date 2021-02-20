@@ -2,10 +2,10 @@
 
 pub use self::handler::*;
 use crate::drivers::{
-    irq::{gicv2::GICv2, IRQManager},
+    irq::{gicv2::GicV2, IrqManager},
+    serial::pl011_uart::Pl011Uart,
     Driver,
 };
-use crate::drivers::{rtc::RTC, serial::pl011_uart::PL011Uart};
 use aarch64::registers::{self, *};
 use alloc::sync::Arc;
 use spin::Lazy;
@@ -17,13 +17,15 @@ pub mod handler;
 mod syndrome;
 
 /// Enable the interrupt (only IRQ).
-#[inline(always)]
+/// # Safety
+#[inline]
 pub unsafe fn enable() {
     asm!("msr DAIFClr, #2");
 }
 
 /// Disable the interrupt (only IRQ).
-#[inline(always)]
+/// # Safety
+#[inline]
 pub unsafe fn disable() {
     asm!("msr DAIFSet, #2");
 }
@@ -31,7 +33,8 @@ pub unsafe fn disable() {
 /// Disable the interrupt and store the status.
 ///
 /// return: status(usize)
-#[inline(always)]
+/// # Safety
+#[inline]
 pub unsafe fn disable_and_store() -> usize {
     let daif = DAIF.get() as usize;
     disable();
@@ -42,17 +45,15 @@ pub unsafe fn disable_and_store() -> usize {
 ///
 /// Arguments:
 /// * flags:  original status(usize)
-#[inline(always)]
+/// # Safety
+#[inline]
 pub unsafe fn restore(flags: usize) {
     DAIF.set(flags as u64);
 }
 
-pub fn ack(_irq: usize) {
-    // TODO
-}
-
-pub fn enable_irq(irq: usize) {
-    // TODO
+#[inline]
+pub fn enable_irq(irq_num: usize) {
+    IRQ_MANAGER.enable(irq_num);
 }
 
 pub fn wait_for_interrupt() {
@@ -64,7 +65,7 @@ pub fn wait_for_interrupt() {
     DAIF.set(daif);
 }
 
-pub static IRQ_MANAGER: Lazy<GICv2> = Lazy::new(|| unsafe { GICv2::new(0x08000000, 0x08010000) });
+pub static IRQ_MANAGER: Lazy<GicV2> = Lazy::new(|| unsafe { GicV2::new(0x08000000, 0x08010000) });
 
 pub fn init() {
     unsafe {
@@ -73,7 +74,7 @@ pub fn init() {
         let timer = Arc::new(GenericTimer::new());
         IRQ_MANAGER.register_local_irq(27, timer.clone()).unwrap();
         IRQ_MANAGER.enable(27);
-        timer.init();
+        timer.init().unwrap();
         enable();
     }
 }

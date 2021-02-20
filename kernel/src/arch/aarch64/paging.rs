@@ -1,16 +1,20 @@
 //! Page table implementations for aarch64.
 
-use crate::{consts::PHYSICAL_MEMORY_OFFSET, memory::{alloc_frames, dealloc_frames, phys_to_virt, Entry, PageTable, PageTableExt}};
-use aarch64::addr::{align_down, align_up, PhysAddr, ALIGN_2MIB};
-use aarch64::cache::*;
-use aarch64::paging::{
-    mapper::{OffsetPageTable, Mapper},
-    memory_attribute::*,
-    table::{PageTable as RawPageTable, PageTableEntry, PageTableFlags as EF},
-    Frame, FrameAllocator, FrameDeallocator, Page as PageAllSizes, Size2MiB, Size4KiB,
+use crate::{
+    consts::PHYSICAL_MEMORY_OFFSET,
+    memory::{alloc_frames, dealloc_frames, phys_to_virt, Entry, PageTable, PageTableExt},
 };
-use aarch64::translation::{invalidate_tlb_vaddr, local_invalidate_tlb_all};
-use aarch64::translation::{ttbr_el1_read, ttbr_el1_write};
+use aarch64::{
+    addr::{align_down, align_up, PhysAddr, ALIGN_2MIB},
+    cache::*,
+    paging::{
+        mapper::{Mapper, OffsetPageTable},
+        memory_attribute::*,
+        table::{PageTable as RawPageTable, PageTableEntry, PageTableFlags as EF},
+        Frame, FrameAllocator, FrameDeallocator, Page as PageAllSizes, Size2MiB, Size4KiB,
+    },
+    translation::{invalidate_tlb_vaddr, local_invalidate_tlb_all, ttbr_el1_read, ttbr_el1_write},
+};
 use core::mem::ManuallyDrop;
 use log::*;
 

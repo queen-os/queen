@@ -1,13 +1,8 @@
-use crate::drivers::Driver;
+use super::Driver;
 
-pub struct RTC {}
+pub mod pl031;
 
-impl Driver for RTC {
-    fn compatible(&self) -> &'static str {
-        "RTC"
-    }
-
-    fn handle_interrupt(&self) {
-        println!("rtc irq");
-    }
+pub trait RtcDriver: Driver {
+    /// Read seconds since 1970-01-01
+    fn read_epoch(&self) -> u64;
 }
