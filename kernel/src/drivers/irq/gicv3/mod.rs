@@ -9,37 +9,40 @@ use super::IrqManager;
 
 mod gicc;
 mod gicd;
-mod v2m;
+mod gicr;
 
 /// Representation of the GIC.
-pub struct GicV2 {
+pub struct GicV3 {
     /// The Distributor.
     pub gicd: gicd::GicD,
 
     /// The CPU Interface.
     gicc: gicc::GicC,
 
+    gicr: gicr::GicR,
+
     irq_map: MutexNoIrq<BTreeMap<usize, Vec<Arc<dyn Driver>>>>,
 }
 
-impl GicV2 {
+impl GicV3 {
     /// Create an instance.
     ///
     /// # Safety
     ///
     /// - The user must ensure to provide a correct MMIO start address.
-    pub unsafe fn new(gicd_mmio_start_addr: usize, gicc_mmio_start_addr: usize) -> Self {
+    pub unsafe fn new(gicd_mmio_start_addr: usize, gicc_mmio_start_addr: usize, gicr_mmio_start_addr:usize) -> Self {
         Self {
             gicd: gicd::GicD::new(gicd_mmio_start_addr),
             gicc: gicc::GicC::new(gicc_mmio_start_addr),
+            gicr: gicr::GicR::new(gicr_mmio_start_addr),
             irq_map: MutexNoIrq::new(BTreeMap::new()),
         }
     }
 }
 
-impl Driver for GicV2 {
+impl Driver for GicV3 {
     fn compatible(&self) -> &'static str {
-        "GICv2 (ARM Generic Interrupt Controller v2)"
+        "GICv3 (ARM Generic Interrupt Controller v3)"
     }
 
     fn init(&self) -> drivers::Result<()> {
@@ -47,8 +50,8 @@ impl Driver for GicV2 {
             self.gicd.boot_core_init();
         }
 
-        self.gicc.priority_accept_all();
-        self.gicc.enable();
+        // self.gicc.priority_accept_all();
+        // self.gicc.enable();
 
         Ok(())
     }
@@ -62,7 +65,7 @@ impl Driver for GicV2 {
     }
 }
 
-impl IrqManager for GicV2 {
+impl IrqManager for GicV3 {
     fn register_local_irq(&self, irq_num: usize, driver: Arc<dyn Driver>) -> drivers::Result<()> {
         let mut map = self.irq_map.lock();
         map.entry(irq_num).or_insert_with(Vec::new).push(driver);
@@ -72,6 +75,7 @@ impl IrqManager for GicV2 {
 
     fn enable(&self, irq_num: usize) {
         self.gicd.enable(irq_num);
+        self.gicr.enable_ppi(irq_num);
     }
 
     fn handle_pending_irqs(&self) {

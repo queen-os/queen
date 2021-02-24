@@ -3,6 +3,7 @@ pub mod device_tree;
 pub mod irq;
 pub mod rtc;
 pub mod serial;
+pub mod gpio;
 
 #[derive(Debug)]
 pub struct DriverError {}

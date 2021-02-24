@@ -92,6 +92,7 @@ pub extern "C" fn trap_handler(tf: &mut TrapFrame) {
             }
         }
         Kind::Irq => {
+            dbg!();
             IRQ_MANAGER.handle_pending_irqs();
         }
         _ => panic!(),

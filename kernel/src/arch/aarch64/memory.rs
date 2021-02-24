@@ -21,6 +21,12 @@ pub struct MemInitOpts {
     phys_mem_range: Range<usize>,
 }
 
+impl MemInitOpts {
+    pub fn new(phys_mem_range: Range<usize>) -> Self {
+        Self { phys_mem_range }
+    }
+}
+
 pub fn init(opts: MemInitOpts) {
     init_heap();
     init_frame_allocator(&opts);

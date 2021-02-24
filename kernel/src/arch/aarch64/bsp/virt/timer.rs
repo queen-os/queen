@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use aarch64::registers::*;
 
-use crate::drivers::{self, Driver};
+use crate::drivers::{self, Driver, gpio::Pl061Gpio, serial::SerialDriver, serial::pl011_uart::Pl011Uart};
 #[derive(Debug, Default)]
 pub struct GenericTimer {}
 
@@ -38,16 +38,22 @@ impl GenericTimer {
 }
 
 impl Driver for GenericTimer {
+    fn compatible(&self) -> &'static str {
+        "ARM Generic Timer"
+    }
+
     fn init(&self) -> drivers::Result<()> {
         CNTV_CTL_EL0.write(CNTV_CTL_EL0::ENABLE::SET);
         Ok(())
     }
 
-    fn compatible(&self) -> &'static str {
-        "ARM Generic Timer"
-    }
-
     fn handle_interrupt(&self) {
+        // unsafe {
+        //     let gpio = Pl061Gpio::new(0x09030000);
+        //     dbg!(gpio.get_raw_status());
+        //     let uart = Pl011Uart::new(0x9000000);
+        //     dbg!(uart.get_status());
+        // }
         self.tick_in(1000 * 1000);
     }
 

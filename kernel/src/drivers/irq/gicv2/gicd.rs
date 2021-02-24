@@ -40,6 +40,7 @@ register_structs! {
         (0x008 => _reserved1),
         (0x104 => ISENABLER: [ReadWrite<u32>; 31]),
         (0x108 => _reserved2),
+        (0x200 => ISPENDR: [ReadWrite<u32>; 32]),
         (0x820 => ITARGETSR: [ReadWrite<u32, ITARGETSR::Register>; 248]),
         (0x824 => @END),
     }
@@ -70,10 +71,6 @@ pub struct GicD {
     /// Access to banked registers is unguarded.
     banked_registers: BankedRegisters,
 }
-
-//--------------------------------------------------------------------------------------------------
-// Private Code
-//--------------------------------------------------------------------------------------------------
 
 impl SharedRegisters {
     /// Return the number of IRQs that this HW implements.
@@ -148,7 +145,7 @@ impl GicD {
         // Each bit in the u32 enable register corresponds to one IRQ number. Shift right by 5
         // (division by 32) and arrive at the index for the respective ISENABLER[i].
         let enable_reg_index = irq_num >> 5;
-        let enable_bit: u32 = 1u32 << (irq_num % 32);
+        let enable_bit = 1u32 << (irq_num % 32);
 
         // Check if we are handling a private or shared IRQ.
         match irq_num {
@@ -166,5 +163,15 @@ impl GicD {
                 enable_reg.set(enable_reg.get() | enable_bit);
             }
         }
+    }
+
+    pub fn set_pending(&self) {
+        self.shared_registers.lock().ISPENDR[1].set(1<<1);
+        self.shared_registers.lock().ISPENDR[0].set(1<<27);
+    }
+
+    pub fn read_pending(&self) -> (u32, u32) {
+        let reg = &self.shared_registers.lock().ISPENDR;
+        (reg[0].get(), reg[1].get())
     }
 }

@@ -74,6 +74,11 @@ impl Pl031Rtc {
             registers: Registers::new(mmio_start_addr),
         }
     }
+
+    pub fn set_next(&self) {
+        let x = self.read_epoch() as u32;
+        self.registers.MR.set(x + 2);
+    }
 }
 
 impl Driver for Pl031Rtc {
@@ -87,7 +92,7 @@ impl Driver for Pl031Rtc {
         // Clear any pending alarm interrupts.
         self.registers.ICR.write(ICR::RTCICR::SET);
         // Enable IRQ
-        self.registers.IMSC.write(IMSC::RTCIMSC::SET);
+        self.registers.IMSC.write(IMSC::RTCIMSC::CLEAR);
         // Turn the RTC on
         self.registers.CR.write(CR::RTCEN::SET);
 
@@ -96,6 +101,10 @@ impl Driver for Pl031Rtc {
 
     fn device_type(&self) -> drivers::DeviceType {
         drivers::DeviceType::Rtc
+    }
+
+    fn handle_interrupt(&self) {
+        todo!()
     }
 }
 

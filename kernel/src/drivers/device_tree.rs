@@ -1,6 +1,7 @@
 use core::ops::Range;
 use fdt_rs::{base::*, prelude::*};
 
+#[derive(Copy, Clone, Debug)]
 pub struct DeviceTree<'dt>(DevTree<'dt>);
 
 impl<'dt> DeviceTree<'dt> {

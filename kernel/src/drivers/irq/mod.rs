@@ -3,6 +3,7 @@ use alloc::sync::Arc;
 use super::{Driver, Result};
 
 pub mod gicv2;
+pub mod gicv3;
 
 /// IRQ management functions.
 ///

@@ -187,7 +187,7 @@ register_structs! {
         (0x30 => CR: WriteOnly<u32, CR::Register>),
         (0x34 => IFLS: ReadWrite<u32, IFLS::Register>),
         (0x38 => IMSC: ReadWrite<u32, IMSC::Register>),
-        (0x3C => _reserved3),
+        (0x3C => RIS: ReadOnly<u32>),
         (0x40 => MIS: ReadOnly<u32, MIS::Register>),
         (0x44 => ICR: WriteOnly<u32, ICR::Register>),
         (0x48 => @END),
@@ -382,6 +382,10 @@ impl Pl011Uart {
         Self {
             inner: MutexNoIrq::new(Pl011UartInner::new(mmio_start_addr)),
         }
+    }
+
+    pub fn get_status(&self) -> u32 {
+        self.inner.lock().registers.MIS.get()
     }
 }
 
