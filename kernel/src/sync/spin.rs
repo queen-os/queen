@@ -59,7 +59,7 @@ impl<T> MutexNoIrq<T> {
     /// Try to lock this [`Mutex`], returning a lock guard if successful.
     #[inline]
     pub fn try_lock(&self) -> Option<MutexGuardNoIrq<T>> {
-        self.0.try_lock().map(|guard| MutexGuardNoIrq::new(guard))
+        self.0.try_lock().map(MutexGuardNoIrq::new)
     }
 
     /// Returns a mutable reference to the underlying data.

@@ -37,6 +37,6 @@ unsafe extern "C" fn others_start() -> ! {
         spin_loop()
     }
     memory::init_other();
-    // interrupt::init_other();
+    interrupt::init_other();
     crate::kmain();
 }

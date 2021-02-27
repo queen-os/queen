@@ -27,3 +27,10 @@ pub fn start_others() {
 pub fn id() -> usize {
     asm::cpuid()
 }
+
+/// Generates an ISB (instruction synchronization barrier) instruction or equivalent CP15 instruction.
+/// # Safety
+#[inline]
+pub unsafe fn isb() {
+    aarch64::barrier::isb(aarch64::barrier::SY);
+}

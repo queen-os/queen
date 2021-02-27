@@ -2,7 +2,7 @@ use core::time::Duration;
 
 use aarch64::registers::*;
 
-use crate::drivers::{self, Driver, gpio::Pl061Gpio, serial::SerialDriver, serial::pl011_uart::Pl011Uart};
+use crate::drivers::{self, Driver};
 #[derive(Debug, Default)]
 pub struct GenericTimer {}
 
@@ -33,7 +33,7 @@ impl GenericTimer {
         let count = Self::freq() * (us as u64) / 1000000;
         // max `68719476` us (0xffff_ffff / 38400000 * 62500000).
         debug_assert!(count <= u32::max_value() as u64);
-        CNTV_TVAL_EL0.set(count as u64);
+        CNTP_TVAL_EL0.set(count as u64);
     }
 }
 
@@ -43,17 +43,11 @@ impl Driver for GenericTimer {
     }
 
     fn init(&self) -> drivers::Result<()> {
-        CNTV_CTL_EL0.write(CNTV_CTL_EL0::ENABLE::SET);
+        CNTP_CTL_EL0.write(CNTP_CTL_EL0::ENABLE::SET);
         Ok(())
     }
 
     fn handle_interrupt(&self) {
-        // unsafe {
-        //     let gpio = Pl061Gpio::new(0x09030000);
-        //     dbg!(gpio.get_raw_status());
-        //     let uart = Pl011Uart::new(0x9000000);
-        //     dbg!(uart.get_status());
-        // }
         self.tick_in(1000 * 1000);
     }
 

@@ -400,7 +400,19 @@ impl Driver for Pl011Uart {
     }
 
     fn handle_interrupt(&self) {
-        println!("UART");
+        let mut inner = self.inner.lock();
+        let pending = inner.registers.MIS.extract();
+
+        // Clear all pending IRQs.
+        inner.registers.ICR.write(ICR::ALL::CLEAR);
+
+        // Check for any kind of RX interrupt.
+        if pending.matches_any(MIS::RXMIS::SET + MIS::RTMIS::SET) {
+            // Echo any received characters.
+            while let Some(c) = inner.read_char_converting(BlockingMode::NonBlocking) {
+                inner.write_char(c)
+            }
+        }
     }
 
     fn device_type(&self) -> drivers::DeviceType {

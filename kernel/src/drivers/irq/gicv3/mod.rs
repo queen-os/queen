@@ -1,23 +1,18 @@
-use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
-
+use super::IrqManager;
 use crate::{
     drivers::{self, Driver},
     sync::spin::MutexNoIrq,
 };
+use aarch64::registers::*;
+use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
 
-use super::IrqManager;
-
-mod gicc;
 mod gicd;
 mod gicr;
 
 /// Representation of the GIC.
 pub struct GicV3 {
     /// The Distributor.
-    pub gicd: gicd::GicD,
-
-    /// The CPU Interface.
-    gicc: gicc::GicC,
+    gicd: gicd::GicD,
 
     gicr: gicr::GicR,
 
@@ -30,13 +25,29 @@ impl GicV3 {
     /// # Safety
     ///
     /// - The user must ensure to provide a correct MMIO start address.
-    pub unsafe fn new(gicd_mmio_start_addr: usize, gicc_mmio_start_addr: usize, gicr_mmio_start_addr:usize) -> Self {
+    pub unsafe fn new(gicd_mmio_start_addr: usize, gicr_mmio_start_addr: usize) -> Self {
         Self {
             gicd: gicd::GicD::new(gicd_mmio_start_addr),
-            gicc: gicc::GicC::new(gicc_mmio_start_addr),
             gicr: gicr::GicR::new(gicr_mmio_start_addr),
             irq_map: MutexNoIrq::new(BTreeMap::new()),
         }
+    }
+
+    fn gicc_init(&self) {
+        // enable system register interface
+        let sre = ICC_SRE_EL1.get_sre();
+        if !sre {
+            ICC_SRE_EL1.set_sre(true);
+        }
+
+        // set priority threshold to max.
+        ICC_PMR_EL1.set_priority(0xff);
+        // ICC_CTLR_EL1.EOImode.
+        ICC_CTLR_EL1.set_eoi_mode(true);
+        // enable group 1 interrupts.
+        ICC_IGRPEN1_EL1.set_enable(true);
+
+        unsafe { crate::cpu::isb() }
     }
 }
 
@@ -50,8 +61,8 @@ impl Driver for GicV3 {
             self.gicd.boot_core_init();
         }
 
-        // self.gicc.priority_accept_all();
-        // self.gicc.enable();
+        self.gicr.init();
+        self.gicc_init();
 
         Ok(())
     }
@@ -66,38 +77,41 @@ impl Driver for GicV3 {
 }
 
 impl IrqManager for GicV3 {
-    fn register_local_irq(&self, irq_num: usize, driver: Arc<dyn Driver>) -> drivers::Result<()> {
+    fn register_and_enable_local_irq(
+        &self,
+        irq_num: usize,
+        driver: Arc<dyn Driver>,
+    ) -> drivers::Result<()> {
         let mut map = self.irq_map.lock();
         map.entry(irq_num).or_insert_with(Vec::new).push(driver);
 
-        Ok(())
-    }
+        match irq_num {
+            0..=31 => self.gicr.enable(irq_num),
+            _ => self.gicd.enable(irq_num),
+        }
 
-    fn enable(&self, irq_num: usize) {
-        self.gicd.enable(irq_num);
-        self.gicr.enable_ppi(irq_num);
+        Ok(())
     }
 
     fn handle_pending_irqs(&self) {
         // Extract the highest priority pending IRQ number from the Interrupt Acknowledge Register
         // (IAR).
-        let irq_number = self.gicc.pending_irq_number();
-        dbg!(irq_number);
-        // let p = self.gicd.read_pending();
-        // println!("{:b} {:b}", p.0, p.1);
-        if irq_number == 1023 {
+        let irq_num = ICC_IAR1_EL1.get_pending_interrupt() as usize;
+        dbg!(irq_num);
+
+        if irq_num == 1023 {
             return;
         }
 
-        if let Some(drivers) = self.irq_map.lock().get(&irq_number) {
+        if let Some(drivers) = self.irq_map.lock().get(&irq_num) {
             for driver in drivers {
                 driver.handle_interrupt();
             }
         } else {
-            panic!("No handler registered for IRQ {}", irq_number)
+            panic!("No handler registered for IRQ {}", irq_num);
         }
 
         // Signal completion of handling.
-        self.gicc.mark_completed(irq_number as u32);
+        ICC_EOIR1_EL1.mark_completed(irq_num as u32);
     }
 }

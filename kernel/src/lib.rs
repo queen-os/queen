@@ -7,9 +7,6 @@
 #![feature(const_fn_fn_ptr_basics)]
 #![no_std]
 
-// TODO
-#![allow(unused)]
-
 #[macro_use]
 extern crate alloc;
 #[macro_use]

@@ -1,12 +1,6 @@
-use register::{mmio::*, register_bitfields, register_structs};
+use register::{mmio::*, register_structs};
 
-use crate::drivers::{self, common::MMIODerefWrapper, Driver};
-
-register_bitfields! {
-    u32,
-
-
-}
+use crate::drivers::common::MMIODerefWrapper;
 
 register_structs! {
     #[allow(non_snake_case)]

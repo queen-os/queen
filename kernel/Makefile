@@ -11,7 +11,7 @@ kernel := $(build_path)/queen-core
 smp := 4
 qemu_opts := \
 	-s \
-	-M $(board),gic-version=3 \
+	-M $(board),gic-version=2,its=off \
 	-m 1G \
 	-cpu $(target_cpu) \
 	-smp $(smp) \
@@ -41,5 +41,5 @@ gdb:
 	gdb-multiarch ../target/aarch64-unknown-none-softfloat/release/queen-core
 
 dumpdts:
-	$(qemu) -s -M virt,dumpdtb=virt.dtb,gic-version=3 -m 1G -cpu $(target_cpu) -smp $(smp) -serial stdio -display none
+	$(qemu) -s -M virt,dumpdtb=virt.dtb,gic-version=3,its=off -m 1G -cpu $(target_cpu) -smp $(smp) -serial stdio -display none
 	dtc virt.dtb

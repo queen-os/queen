@@ -9,7 +9,6 @@ use super::IrqManager;
 
 mod gicc;
 mod gicd;
-mod v2m;
 
 /// Representation of the GIC.
 pub struct GicV2 {
@@ -63,24 +62,22 @@ impl Driver for GicV2 {
 }
 
 impl IrqManager for GicV2 {
-    fn register_local_irq(&self, irq_num: usize, driver: Arc<dyn Driver>) -> drivers::Result<()> {
+    fn register_and_enable_local_irq(
+        &self,
+        irq_num: usize,
+        driver: Arc<dyn Driver>,
+    ) -> drivers::Result<()> {
         let mut map = self.irq_map.lock();
         map.entry(irq_num).or_insert_with(Vec::new).push(driver);
-
-        Ok(())
-    }
-
-    fn enable(&self, irq_num: usize) {
         self.gicd.enable(irq_num);
+        Ok(())
     }
 
     fn handle_pending_irqs(&self) {
         // Extract the highest priority pending IRQ number from the Interrupt Acknowledge Register
         // (IAR).
         let irq_number = self.gicc.pending_irq_number();
-        dbg!(irq_number);
-        // let p = self.gicd.read_pending();
-        // println!("{:b} {:b}", p.0, p.1);
+
         if irq_number == 1023 {
             return;
         }

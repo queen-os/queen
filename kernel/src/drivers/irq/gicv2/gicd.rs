@@ -29,6 +29,13 @@ register_bitfields! {
         Offset2 OFFSET(16) NUMBITS(8) [],
         Offset1 OFFSET(8)  NUMBITS(8) [],
         Offset0 OFFSET(0)  NUMBITS(8) []
+    ],
+
+    IPRIORITYR [
+        Offset3 OFFSET(24) NUMBITS(8) [],
+        Offset2 OFFSET(16) NUMBITS(8) [],
+        Offset1 OFFSET(8)  NUMBITS(8) [],
+        Offset0 OFFSET(0)  NUMBITS(8) []
     ]
 }
 
@@ -39,8 +46,10 @@ register_structs! {
         (0x004 => TYPER: ReadOnly<u32, TYPER::Register>),
         (0x008 => _reserved1),
         (0x104 => ISENABLER: [ReadWrite<u32>; 31]),
+        (0x180 => ICENABLER: [ReadWrite<u32>; 32]),
         (0x108 => _reserved2),
         (0x200 => ISPENDR: [ReadWrite<u32>; 32]),
+        (0x400 => IPRIORITYR: [ReadWrite<u32, IPRIORITYR::Register>; 255]),
         (0x820 => ITARGETSR: [ReadWrite<u32, ITARGETSR::Register>; 248]),
         (0x824 => @END),
     }
@@ -137,6 +146,13 @@ impl GicD {
             );
         }
 
+        let num_irqs = regs.num_irqs();
+
+        // Disable all global interrupts
+        for i in regs.ICENABLER[1..num_irqs / 32].iter() {
+            i.set(!0);
+        }
+
         regs.CTLR.write(CTLR::Enable::SET);
     }
 
@@ -163,15 +179,5 @@ impl GicD {
                 enable_reg.set(enable_reg.get() | enable_bit);
             }
         }
-    }
-
-    pub fn set_pending(&self) {
-        self.shared_registers.lock().ISPENDR[1].set(1<<1);
-        self.shared_registers.lock().ISPENDR[0].set(1<<27);
-    }
-
-    pub fn read_pending(&self) -> (u32, u32) {
-        let reg = &self.shared_registers.lock().ISPENDR;
-        (reg[0].get(), reg[1].get())
     }
 }

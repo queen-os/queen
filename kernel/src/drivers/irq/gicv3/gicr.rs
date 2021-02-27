@@ -1,4 +1,4 @@
-use crate::{drivers::common::MMIODerefWrapper, sync::spin::MutexNoIrq};
+use crate::drivers::common::MMIODerefWrapper;
 use register::{mmio::*, register_bitfields, register_structs};
 
 register_bitfields! {
@@ -10,14 +10,20 @@ register_bitfields! {
         /// Register Write Pending. This bit indicates whether a register write for the current Security state is
         /// in progress or not.
         RWP OFFSET(3) NUMBITS(1) []
+    ],
+
+    WAKER [
+        ProcessorSleep OFFSET(1) NUMBITS(1) [],
+        ChildrenAsleep OFFSET(2) NUMBITS(1) []
     ]
 }
 
 register_structs! {
     #[allow(non_snake_case)]
-    pub RegisterBlock {
+    pub RdBasedRegisterBlock {
         (0x0000 => CTLR: ReadWrite<u32, CTLR::Register>),
         (0x0008 => TYPER: ReadOnly<u32>),
+        (0x0014 => WAKER: ReadWrite<u32, WAKER::Register>),
         (0x0100  => @END),
     }
 }
@@ -30,16 +36,18 @@ register_structs! {
         (0x0100 => ISENABLER0: ReadWrite<u32>),
         (0x0180 => ICENABLER0: ReadWrite<u32>),
         (0x0280 => ICPENDR0: ReadWrite<u32>),
+        (0x0400 => IPRIORITYR: [ReadWrite<u32>; 8]),
+        (0x0c04 => ICFGR1: ReadWrite<u32>),
         (0x0E00 => @END),
     }
 }
 
 /// Abstraction for the associated MMIO registers.
-type Registers = MMIODerefWrapper<RegisterBlock>;
+type RdBasedRegisters = MMIODerefWrapper<RdBasedRegisterBlock>;
 type SgiBasedRegisters = MMIODerefWrapper<SgiBasedRegisterBlock>;
 
 pub struct GicR {
-    registers: Registers,
+    rd_based_registers: RdBasedRegisters,
     sgi_based_registers: SgiBasedRegisters,
 }
 
@@ -51,30 +59,53 @@ impl GicR {
     /// - The user must ensure to provide a correct MMIO start address.
     pub const unsafe fn new(mmio_start_addr: usize) -> Self {
         Self {
-            registers:Registers::new(mmio_start_addr),
+            rd_based_registers: RdBasedRegisters::new(mmio_start_addr),
             sgi_based_registers: SgiBasedRegisters::new(mmio_start_addr + 0x10000),
         }
     }
 
-    pub fn enable_ppi(&self, i: usize) {
-        assert!(i <= 32);
-        self.sgi_based_registers.ISENABLER0.set(1 << i);
+    #[inline]
+    pub fn enable(&self, irq_num: usize) {
+        self.sgi_based_registers.ISENABLER0.set(1 << irq_num);
+        self.wait_for_rwp();
+    }
+
+    fn wakeup(&self) {
+        self.rd_based_registers
+            .WAKER
+            .write(WAKER::ProcessorSleep::CLEAR);
+        while self.rd_based_registers.WAKER.read(WAKER::ChildrenAsleep) != 0 {}
     }
 
     pub fn init(&self) {
+        self.wakeup();
+
         let regs = &self.sgi_based_registers;
+
+        // set the priority on PPI and SGI
+        let pr = (0x90 << 24) | (0x90 << 16) | (0x90 << 8) | 0x90;
+        for i in 0..4 {
+            regs.IPRIORITYR[i].set(pr);
+        }
+        let pr = (0xa0 << 24) | (0xa0 << 16) | (0xa0 << 8) | 0xa0;
+        for i in 4..8 {
+            regs.IPRIORITYR[i].set(pr);
+        }
+
+        // disable all PPI and enable all SGI.
+        regs.ICENABLER0.set(0xffff_0000);
+        regs.ISENABLER0.set(0x0000_ffff);
+
         // configure sgi/ppi as non-secure group 1.
-        regs.IGROUPR0.set(!0);
+        regs.IGROUPR0.set(0xffff_ffff);
+
         self.wait_for_rwp();
-        // clear and mask sgi/ppi.
-        regs.ICENABLER0.set(0xffff_ffff);
-        regs.ICPENDR0.set(!0);
-        self.wait_for_rwp();
+        unsafe { crate::cpu::isb() }
     }
 
     fn wait_for_rwp(&self) {
         let mut count = 100_0000i32;
-        while self.registers.CTLR.read(CTLR::RWP) != 0 {
+        while self.rd_based_registers.CTLR.read(CTLR::RWP) != 0 {
             count -= 1;
             if count.is_negative() {
                 panic!("arm_gicv3: rwp timeout");
