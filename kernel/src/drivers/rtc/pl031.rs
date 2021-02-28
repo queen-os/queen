@@ -83,7 +83,7 @@ impl Pl031Rtc {
 
 impl Driver for Pl031Rtc {
     fn compatible(&self) -> &'static str {
-        "BCM PL031 RTC"
+        "arm,pl031"
     }
 
     fn init(&self) -> drivers::Result<()> {

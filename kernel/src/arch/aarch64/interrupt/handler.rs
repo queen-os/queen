@@ -1,14 +1,17 @@
 //! Trap handler
 
-use crate::drivers::irq::IrqManager;
+use core::convert::TryFrom;
 
 use super::{
     syndrome::{Fault, Syndrome},
     IRQ_MANAGER,
 };
+use crate::drivers::irq::IrqManager;
 use aarch64::{registers::*, trap::TrapFrame};
+use num_enum::TryFromPrimitive;
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Kind {
     Synchronous = 0,
     Irq = 1,
@@ -17,18 +20,14 @@ pub enum Kind {
 }
 
 impl Kind {
-    fn from(x: usize) -> Kind {
-        match x {
-            x if x == Kind::Synchronous as usize => Kind::Synchronous,
-            x if x == Kind::Irq as usize => Kind::Irq,
-            x if x == Kind::Fiq as usize => Kind::Fiq,
-            x if x == Kind::SError as usize => Kind::SError,
-            _ => panic!("bad kind"),
-        }
+    #[inline]
+    fn from(x: u8) -> Kind {
+        Kind::try_from(x).expect("Bad kind")
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Source {
     CurrentSpEl0 = 0,
     CurrentSpElx = 1,
@@ -37,14 +36,9 @@ pub enum Source {
 }
 
 impl Source {
-    fn from(x: usize) -> Source {
-        match x {
-            x if x == Source::CurrentSpEl0 as usize => Source::CurrentSpEl0,
-            x if x == Source::CurrentSpElx as usize => Source::CurrentSpElx,
-            x if x == Source::LowerAArch64 as usize => Source::LowerAArch64,
-            x if x == Source::LowerAArch32 as usize => Source::LowerAArch32,
-            _ => panic!("bad kind"),
-        }
+    #[inline]
+    fn from(x: u8) -> Source {
+        Source::try_from(x).expect("Bad source")
     }
 }
 
@@ -61,8 +55,8 @@ pub struct Info {
 #[no_mangle]
 pub extern "C" fn trap_handler(tf: &mut TrapFrame) {
     let info: Info = Info {
-        source: Source::from(tf.trap_num & 0xFFFF),
-        kind: Kind::from(tf.trap_num >> 16),
+        source: Source::from((tf.trap_num & 0xFFFF) as u8),
+        kind: Kind::from((tf.trap_num >> 16) as u8),
     };
     let esr = ESR_EL1.get() as u32;
     trace!(

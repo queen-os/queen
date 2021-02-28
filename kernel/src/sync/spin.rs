@@ -4,8 +4,8 @@ use core::{
 };
 use spin::MutexGuard;
 
+pub use spin::RwLock;
 pub type Mutex<T> = spin::Mutex<T>;
-
 pub struct MutexNoIrq<T>(Mutex<T>);
 
 unsafe impl<T: Send> Sync for MutexNoIrq<T> {}

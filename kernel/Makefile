@@ -11,7 +11,7 @@ kernel := $(build_path)/queen-core
 smp := 4
 qemu_opts := \
 	-s \
-	-M $(board),gic-version=2,its=off \
+	-M $(board),gic-version=2 \
 	-m 1G \
 	-cpu $(target_cpu) \
 	-smp $(smp) \

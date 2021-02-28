@@ -391,7 +391,7 @@ impl Pl011Uart {
 
 impl Driver for Pl011Uart {
     fn compatible(&self) -> &'static str {
-        "BCM PL011 UART"
+        "arm,pl011"
     }
 
     fn init(&self) -> drivers::Result<()> {

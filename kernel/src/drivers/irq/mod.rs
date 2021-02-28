@@ -2,8 +2,10 @@ use alloc::sync::Arc;
 
 use super::{Driver, Result};
 
-pub mod gicv2;
-pub mod gicv3;
+mod gicv2;
+mod gicv3;
+
+pub use gicv2::GicV2;
 
 /// IRQ management functions.
 ///

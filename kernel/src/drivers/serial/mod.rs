@@ -1,6 +1,8 @@
 use super::Driver;
 
-pub mod pl011_uart;
+mod pl011_uart;
+
+pub use pl011_uart::{PanicUart, Pl011Uart};
 
 pub trait SerialDriver: Driver {
     /// Write a single character.

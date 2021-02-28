@@ -39,7 +39,7 @@ impl GenericTimer {
 
 impl Driver for GenericTimer {
     fn compatible(&self) -> &'static str {
-        "ARM Generic Timer"
+        "arm,armv8-timer"
     }
 
     fn init(&self) -> drivers::Result<()> {

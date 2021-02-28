@@ -19,12 +19,17 @@ static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
 #[no_mangle]
 unsafe extern "C" fn main_start() -> ! {
     crate::logging::init();
-    let device_tree = drivers::device_tree::DeviceTree::new(bsp::DEVICE_TREE_ADDR).unwrap();
     cpu::start_others();
+
+    let device_tree = drivers::DeviceTree::new(bsp::DEVICE_TREE_ADDR).unwrap();
     memory::init(memory::MemInitOpts::new(
         device_tree.probe_memory().unwrap(),
     ));
+
+    let device_tree =
+        drivers::DeviceTree::new(crate::memory::phys_to_virt(bsp::DEVICE_TREE_ADDR)).unwrap();
     interrupt::init(device_tree);
+
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
     AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();

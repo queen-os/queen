@@ -1,9 +1,15 @@
-pub mod common;
+mod common;
 pub mod device_tree;
 pub mod gpio;
 pub mod irq;
 pub mod rtc;
 pub mod serial;
+pub mod timer;
+
+pub use device_tree::DeviceTree;
+pub use irq::IrqManager;
+pub use rtc::RtcDriver;
+pub use serial::SerialDriver;
 
 #[derive(Debug)]
 pub struct DriverError {}

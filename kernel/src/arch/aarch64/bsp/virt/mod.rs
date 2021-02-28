@@ -7,5 +7,4 @@ pub const CPU_NUM: usize = 4;
 pub const BOOT_CORE_ID: usize = 0;
 pub const DEVICE_TREE_ADDR: usize = 0x4000_0000;
 
-pub mod timer;
 pub mod uart;

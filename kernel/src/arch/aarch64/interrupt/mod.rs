@@ -2,17 +2,12 @@
 
 pub use self::handler::*;
 use crate::drivers::{
-    device_tree::DeviceTree,
-    irq::{gicv2::GicV2, IrqManager},
-    rtc::Pl031Rtc,
-    serial::pl011_uart::Pl011Uart,
-    Driver,
+    irq::GicV2, rtc::Pl031Rtc, serial::Pl011Uart, timer::GenericTimer, DeviceTree, Driver,
+    IrqManager,
 };
 use aarch64::registers::*;
 use alloc::sync::Arc;
 use spin::Lazy;
-
-use super::bsp::timer::GenericTimer;
 
 pub mod consts;
 pub mod handler;

@@ -38,7 +38,7 @@ impl GicV2 {
 
 impl Driver for GicV2 {
     fn compatible(&self) -> &'static str {
-        "GICv2 (ARM Generic Interrupt Controller v2)"
+        "arm,cortex-a15-gic"
     }
 
     fn init(&self) -> drivers::Result<()> {
