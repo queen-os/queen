@@ -173,7 +173,7 @@ impl Add<usize> for Page {
 
 impl AddAssign<usize> for Page {
     fn add_assign(&mut self, rhs: usize) {
-        *self = self.clone() + rhs;
+        *self = *self + rhs;
     }
 }
 
@@ -190,7 +190,7 @@ impl Iterator for PageRange {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.start <= self.end {
-            let page = self.start.clone();
+            let page = self.start;
             self.start += 1;
             Some(page)
         } else {

@@ -1,3 +1,4 @@
+#![no_std]
 #![feature(lang_items)]
 #![feature(naked_functions)]
 #![feature(panic_info_message)]
@@ -5,7 +6,7 @@
 #![feature(asm)]
 #![feature(format_args_nl)]
 #![feature(const_fn_fn_ptr_basics)]
-#![no_std]
+#![feature(const_btree_new)]
 
 #[macro_use]
 extern crate alloc;
@@ -20,7 +21,9 @@ pub mod consts;
 pub mod drivers;
 mod lang;
 pub mod memory;
+// pub mod process;
 pub mod sync;
+
 pub use arch::cpu;
 
 pub fn kmain() -> ! {

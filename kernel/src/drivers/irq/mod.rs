@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use super::{Driver, Result};
 
 mod gicv2;
-mod gicv3;
+// mod gicv3;
 
 pub use gicv2::GicV2;
 
