@@ -25,6 +25,11 @@ impl<'dt> DeviceTree<'dt> {
     }
 
     #[inline]
+    pub fn totalsize(&self) -> usize {
+        self.0.totalsize()
+    }
+
+    #[inline]
     pub fn root(&self) -> Option<DevTreeNode> {
         self.0.root().ok().flatten()
     }

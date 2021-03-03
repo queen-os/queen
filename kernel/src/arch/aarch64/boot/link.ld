@@ -1,8 +1,6 @@
-ENTRY(_start)
-
 SECTIONS
 {
-  . = 0x42000000; /* Load the kernel at this address. */
+  . = 0xffff000040080000; /* Load the kernel at this address. */
 
   .text : {
     stext = .;

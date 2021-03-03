@@ -258,12 +258,11 @@ impl PageTableImpl {
         })
     }
 
-    /// Activate as kernel page table (TTBR0_EL1).
+    /// Activate as kernel page table (TTBR1_EL1).
     /// Used in `arch::memory::map_kernel()`.
     /// # Safety
     pub unsafe fn activate_as_kernel(&self) {
-        // TODO: change to TTBR1_EL1
-        ttbr_el1_write(0, Frame::of_addr(self.token() as u64));
+        ttbr_el1_write(1, Frame::of_addr(self.token() as u64));
         local_invalidate_tlb_all();
     }
 
@@ -313,13 +312,11 @@ impl PageTableExt for PageTableImpl {
     }
 
     unsafe fn set_token(token: u64) {
-        // TODO
-        ttbr_el1_write(1, Frame::of_addr(token));
+        ttbr_el1_write(0, Frame::of_addr(token));
     }
 
     fn active_token() -> u64 {
-        // TODO
-        ttbr_el1_read(1).start_address().as_u64()
+        ttbr_el1_read(0).start_address().as_u64()
     }
 
     fn flush_tlb() {

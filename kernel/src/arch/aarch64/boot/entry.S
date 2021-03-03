@@ -2,17 +2,21 @@
 .globl _start
 
 _start:
+    # the device tree address
+    mov     x23, x0
     # read cpu affinity, start core 0, halt rest
     mrs     x19, mpidr_el1
     and     x19, x19, #3
     # compare and branch if non zero
     cbnz    x19, halt
 
-    ldr     x8, =bootstacktop
-    mov     sp, x8
+    adrp    x0, _start
+    sub     x0, x0, x19, lsl #16
+    mov     sp, x0
+
     bl      clear_bss
     bl      create_init_paging
-    b       boot_startup
+    b       boot_cpu_startup
 
 halt:
     # unreachable
@@ -99,32 +103,21 @@ el_setup_end:
     ret
 
 # primary CPU: enable paging, jump to upper VA range
-boot_startup:
+boot_cpu_startup:
+    bl      start_other_cpu
     bl      enable_mmu
-    ldr     x0, =main_start
-    ldr     x8, =jump_to_main
-    br      x8
+    b       main_start
 
 # other CPUs: jump to EL1, enable paging, jump to upper VA range
-.global others_startup
-others_startup:
+.global other_cpu_startup
+other_cpu_startup:
     mrs     x19, mpidr_el1
     and     x19, x19, #3
+    adrp    x0, _start
+    sub     x0, x0, x19, lsl #16
+    mov     sp, x0
     bl      enable_mmu
-    ldr     x0, =others_start
-    ldr     x8, =jump_to_main
-    br      x8
-
-# set-up kernel stack, jump to main_start/others_start
-jump_to_main:
-    ldr     x8, =bootstacktop
-
-    # x19 is cpu id
-    sub     x8, x8, x19, lsl #18
-    mov     sp, x8
-    mov     x29, xzr
-    mov     x30, xzr
-    br      x0
+    b       others_start
 
 .section .bss.stack
 .align 12

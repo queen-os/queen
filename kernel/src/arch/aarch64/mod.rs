@@ -3,6 +3,8 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
+use alloc::vec::Vec;
+
 use crate::drivers;
 
 mod boot;
@@ -18,16 +20,24 @@ static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
 
 #[no_mangle]
 unsafe extern "C" fn main_start() -> ! {
-    crate::logging::init();
-    cpu::start_others();
+    let device_tree_addr: usize;
+    asm!("mov {}, x23", out(reg) device_tree_addr, options(pure, nomem, nostack));
 
-    let device_tree = drivers::DeviceTree::new(bsp::DEVICE_TREE_ADDR).unwrap();
+    crate::logging::init();
+
+    let device_tree = drivers::DeviceTree::new(device_tree_addr).unwrap();
     memory::init(memory::MemInitOpts::new(
         device_tree.probe_memory().unwrap(),
     ));
 
     let device_tree =
-        drivers::DeviceTree::new(crate::memory::phys_to_virt(bsp::DEVICE_TREE_ADDR)).unwrap();
+        drivers::DeviceTree::new(crate::memory::phys_to_virt(device_tree_addr)).unwrap();
+    let mut buf = Vec::<u8>::with_capacity(device_tree.device_tree().buf().len());
+    let device_tree = {
+        buf.extend_from_slice(device_tree.device_tree().buf());
+        drivers::DeviceTree::new(buf.as_ptr() as usize).unwrap()
+    };
+
     interrupt::init(device_tree);
 
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());

@@ -3,3 +3,4 @@ members = ["aarch64", "kernel"]
 
 [profile.release]
 lto = true
+panic = "abort"

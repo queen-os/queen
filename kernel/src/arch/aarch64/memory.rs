@@ -4,15 +4,16 @@ use super::bsp::{PERIPHERALS_END, PERIPHERALS_START};
 use crate::{
     consts::KERNEL_OFFSET,
     memory::{
-        handler::Linear, init_heap, MMIOType, MemoryAttr, MemorySet, FRAME_ALLOCATOR, PAGE_SIZE,
+        handler::Linear, init_heap, kernel_offset, MMIOType, MemoryAttr, MemorySet,
+        FRAME_ALLOCATOR, PAGE_SIZE,
     },
+    sync::spin::MutexNoIrq as Mutex,
 };
 use aarch64::{
     paging::Frame,
     registers::{RegisterReadWrite, FAR_EL1},
     translation::{local_invalidate_tlb_all, ttbr_el1_write},
 };
-use spin::Mutex;
 
 static KERNEL_MEMORY_SET: Mutex<Option<MemorySet>> = Mutex::new(None);
 
@@ -41,7 +42,7 @@ pub fn init_other() {
 }
 
 fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
-    let page_start = ((_end as usize - phys_mem_range.start) / PAGE_SIZE) as usize;
+    let page_start = ((kernel_offset(_end as usize) - phys_mem_range.start) / PAGE_SIZE) as usize;
     let page_end = ((phys_mem_range.len() - 1) / PAGE_SIZE + 1) as usize;
     FRAME_ALLOCATOR.lock().insert(page_start..page_end);
     info!("FrameAllocator init end");
@@ -51,6 +52,7 @@ fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
 fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     let offset = -(KERNEL_OFFSET as isize);
     let mut ms = MemorySet::new();
+
     ms.push(
         stext as usize,
         etext as usize,
@@ -91,7 +93,7 @@ fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
         PERIPHERALS_START,
         PERIPHERALS_END,
         MemoryAttr::default().mmio(MMIOType::Device as u8),
-        Linear::new(offset),
+        Linear::new(0),
         "peripherals",
     );
 

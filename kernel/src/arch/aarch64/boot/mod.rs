@@ -1,7 +1,11 @@
-use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
+use super::{
+    bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START},
+    consts::KERNEL_OFFSET,
+};
 use crate::memory::phys_to_virt;
 use aarch64::{
     addr::{align_down, align_up, ALIGN_2MIB},
+    asm::cpuid,
     barrier, cache,
     paging::{
         memory_attribute::*, Frame, Page, PageTable, PageTableAttribute as Attr,
@@ -19,7 +23,7 @@ fn map_2mib(p2: &mut PageTable, start: usize, end: usize, flag: EF, attr: Attr) 
     let aligned_end = align_up(end as u64, ALIGN_2MIB);
     for frame in Frame::<Size2MiB>::range_of(aligned_start, aligned_end) {
         let paddr = frame.start_address();
-        let page = Page::<Size2MiB>::of_addr(phys_to_virt(paddr.as_usize()) as u64);
+        let page = Page::<Size2MiB>::of_addr(paddr.as_usize() as u64);
         p2[page.p2_index()].set_block::<Size2MiB>(paddr, flag, attr);
     }
 }
@@ -71,7 +75,7 @@ pub extern "C" fn create_init_paging() {
 
 #[no_mangle]
 #[link_section = ".text.boot"]
-pub extern "C" fn enable_mmu() {
+pub unsafe extern "C" fn enable_mmu() {
     MAIR_EL1.write(
         MAIR_EL1::Attr0.val(MairNormal::config_value())
             + MAIR_EL1::Attr1.val(MairDevice::config_value())
@@ -106,11 +110,15 @@ pub extern "C" fn enable_mmu() {
     translation::ttbr_el1_write(1, frame_lvl4);
     translation::local_invalidate_tlb_all();
 
-    unsafe { barrier::isb(barrier::SY) }
+    // Set new stack pointer and link register.
+    SP.set((KERNEL_OFFSET + bootstacktop as usize - (cpuid() << 18)) as u64);
+    LR.set(LR.get() + KERNEL_OFFSET as u64);
+
+    barrier::isb(barrier::SY);
     // Enable the MMU and turn on data and instruction caching.
     SCTLR_EL1.modify(SCTLR_EL1::M::Enable + SCTLR_EL1::C::Cacheable + SCTLR_EL1::I::Cacheable);
     // Force MMU init to complete before next instruction
-    unsafe { barrier::isb(barrier::SY) }
+    barrier::isb(barrier::SY);
 
     // Invalidate the local I-cache so that any instructions fetched
     // speculatively from the PoC are discarded
@@ -137,4 +145,5 @@ extern "C" {
     fn page_table_lvl2_1();
     fn _start();
     fn _end();
+    fn bootstacktop();
 }
