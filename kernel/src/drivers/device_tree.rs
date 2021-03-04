@@ -11,12 +11,24 @@ impl<'dt> DeviceTree<'dt> {
     /// Parse flattened device tree from `addr`.
     /// # Safety
     /// Must ensure `addr` is valid.
-    pub unsafe fn new(addr: usize) -> FdtResult<Self> {
+    pub unsafe fn from_raw(addr: usize) -> FdtResult<Self> {
         let fdt_header = core::slice::from_raw_parts(addr as *mut u8, DevTree::MIN_HEADER_SIZE);
         let len: usize = DevTree::read_totalsize(fdt_header)?;
         let fdt = core::slice::from_raw_parts(addr as *mut u8, len);
 
         Ok(DeviceTree(DevTree::new(fdt)?))
+    }
+
+    /// Construct the parsable DevTree object from the provided byte slice.
+    /// # Safety
+    /// Callers of this method the must guarantee the following:
+    /// The passed buffer is 32-bit aligned.
+    /// The passed buffer is exactly the length returned by Self::read_totalsize()
+    #[inline]
+    pub unsafe fn new(buf: &'dt [u8]) -> FdtResult<Self> {
+        let fdt = DevTree::new(buf)?;
+
+        Ok(DeviceTree(fdt))
     }
 
     #[inline]

@@ -25,18 +25,16 @@ unsafe extern "C" fn main_start() -> ! {
 
     crate::logging::init();
 
-    let device_tree = drivers::DeviceTree::new(device_tree_addr).unwrap();
+    let device_tree = drivers::DeviceTree::from_raw(device_tree_addr).unwrap();
     memory::init(memory::MemInitOpts::new(
         device_tree.probe_memory().unwrap(),
     ));
 
     let device_tree =
-        drivers::DeviceTree::new(crate::memory::phys_to_virt(device_tree_addr)).unwrap();
-    let mut buf = Vec::<u8>::with_capacity(device_tree.device_tree().buf().len());
-    let device_tree = {
-        buf.extend_from_slice(device_tree.device_tree().buf());
-        drivers::DeviceTree::new(buf.as_ptr() as usize).unwrap()
-    };
+        drivers::DeviceTree::from_raw(crate::memory::phys_to_virt(device_tree_addr)).unwrap();
+    let mut buf = Vec::<u8>::with_capacity(device_tree.totalsize());
+    buf.extend_from_slice(device_tree.device_tree().buf());
+    let device_tree = drivers::DeviceTree::new(buf.as_slice()).unwrap();
 
     interrupt::init(device_tree);
 
