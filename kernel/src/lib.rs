@@ -21,8 +21,9 @@ pub mod consts;
 pub mod drivers;
 mod lang;
 pub mod memory;
-// pub mod process;
+pub mod process;
 pub mod sync;
+pub mod task;
 
 pub use arch::cpu;
 

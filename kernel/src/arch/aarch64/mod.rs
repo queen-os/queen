@@ -15,6 +15,8 @@ pub mod cpu;
 pub mod interrupt;
 pub mod memory;
 pub mod paging;
+pub mod syscall;
+pub mod timer;
 
 static AP_CAN_INIT: AtomicBool = AtomicBool::new(false);
 

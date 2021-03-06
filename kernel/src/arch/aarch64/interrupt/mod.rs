@@ -1,9 +1,9 @@
 //! Interrupt and exception for aarch64.
 
 pub use self::handler::*;
+use super::timer::GenericTimer;
 use crate::drivers::{
-    irq::GicV2, rtc::Pl031Rtc, serial::Pl011Uart, timer::GenericTimer, DeviceTree, Driver,
-    IrqManager,
+    irq::GicV2, rtc::Pl031Rtc, serial::Pl011Uart, DeviceTree, Driver, IrqManager,
 };
 use aarch64::registers::*;
 use alloc::sync::Arc;

@@ -4,7 +4,6 @@ pub mod gpio;
 pub mod irq;
 pub mod rtc;
 pub mod serial;
-pub mod timer;
 
 pub use device_tree::DeviceTree;
 pub use irq::IrqManager;

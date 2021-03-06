@@ -16,4 +16,3 @@ pub struct Thread {
     inner: MutexNoIrq<ThreadInner>,
     tid: Tid,
 }
-
