@@ -1,8 +1,7 @@
+use crate::drivers::{self, Driver};
+use aarch64::registers::*;
 use core::time::Duration;
 
-use aarch64::registers::*;
-
-use crate::drivers::{self, Driver};
 #[derive(Debug, Default)]
 pub struct GenericTimer {}
 
@@ -48,7 +47,8 @@ impl Driver for GenericTimer {
     }
 
     fn handle_interrupt(&self) {
-        self.tick_in(1000 * 1000);
+        crate::task::timer::TIMER.lock().expire(self.read());
+        self.tick_in(10 * 1000);
     }
 
     fn device_type(&self) -> drivers::DeviceType {

@@ -7,6 +7,7 @@
 #![feature(format_args_nl)]
 #![feature(const_fn_fn_ptr_basics)]
 #![feature(const_btree_new)]
+#![feature(map_first_last)]
 
 #[macro_use]
 extern crate alloc;
@@ -17,6 +18,7 @@ extern crate log;
 mod logging;
 #[path = "arch/aarch64/mod.rs"]
 pub mod arch;
+mod backtrace;
 pub mod consts;
 pub mod drivers;
 mod lang;
