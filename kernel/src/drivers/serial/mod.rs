@@ -1,6 +1,6 @@
 use super::Driver;
 
-mod pl011_uart;
+pub mod pl011_uart;
 
 pub use pl011_uart::{PanicUart, Pl011Uart};
 

@@ -1,11 +1,14 @@
 use crate::drivers::{self, Driver};
 use aarch64::registers::*;
+use alloc::sync::Arc;
 use core::time::Duration;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct GenericTimer {}
 
 impl GenericTimer {
+    pub const IRQ_NUMBER: usize = 30;
+
     #[inline]
     pub fn freq() -> u64 {
         // 62500000 on qemu, 19200000 on real machine
@@ -54,4 +57,17 @@ impl Driver for GenericTimer {
     fn device_type(&self) -> drivers::DeviceType {
         drivers::DeviceType::Timer
     }
+}
+
+pub fn driver_init(
+    _device_tree: drivers::DeviceTree,
+    irq_manager: &impl drivers::IrqManager,
+) -> Option<Arc<GenericTimer>> {
+    let timer = Arc::new(GenericTimer::new());
+    timer.init().unwrap();
+    irq_manager
+        .register_and_enable_local_irq(GenericTimer::IRQ_NUMBER, timer.clone())
+        .unwrap();
+
+    Some(timer)
 }

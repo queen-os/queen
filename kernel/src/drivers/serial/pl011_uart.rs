@@ -3,6 +3,7 @@ use crate::{
     drivers::{self, common::MMIODerefWrapper, Driver},
     sync::spin::MutexNoIrq,
 };
+use alloc::sync::Arc;
 use core::fmt;
 use register::{mmio::*, register_bitfields, register_structs};
 
@@ -203,10 +204,6 @@ enum BlockingMode {
     NonBlocking,
 }
 
-//--------------------------------------------------------------------------------------------------
-// Public Definitions
-//--------------------------------------------------------------------------------------------------
-
 pub struct Pl011UartInner {
     registers: Registers,
     chars_written: usize,
@@ -222,10 +219,6 @@ use super::SerialDriver;
 pub struct Pl011Uart {
     inner: MutexNoIrq<Pl011UartInner>,
 }
-
-//--------------------------------------------------------------------------------------------------
-// Public Code
-//--------------------------------------------------------------------------------------------------
 
 impl Pl011UartInner {
     /// Create an instance.
@@ -373,6 +366,8 @@ impl fmt::Write for Pl011UartInner {
 }
 
 impl Pl011Uart {
+    pub const COMPATIBLE: &'static str = "arm,pl011";
+
     /// Create an instance.
     ///
     /// # Safety
@@ -391,7 +386,7 @@ impl Pl011Uart {
 
 impl Driver for Pl011Uart {
     fn compatible(&self) -> &'static str {
-        "arm,pl011"
+        Self::COMPATIBLE
     }
 
     fn init(&self) -> drivers::Result<()> {
@@ -445,4 +440,28 @@ impl SerialDriver for Pl011Uart {
             .is_some()
         {}
     }
+}
+
+pub fn driver_init(
+    device_tree: drivers::DeviceTree,
+    irq_manager: &impl drivers::IrqManager,
+) -> Option<Arc<Pl011Uart>> {
+    use crate::memory::with_kernel_offset;
+    use fdt_rs::prelude::PropReader;
+
+    let uart_node = device_tree.find_node_with_prop(|prop| {
+        Ok(prop.name()?.eq("compatible") && prop.str()?.eq(Pl011Uart::COMPATIBLE))
+    })?;
+
+    let vaddr = with_kernel_offset(device_tree.node_reg_range_iter(&uart_node)?.next()?.start);
+    crate::arch::bsp::uart::set_new_uart(vaddr);
+    let irq_num = device_tree.node_interrupt_cell(&uart_node)?.irq_number();
+
+    let uart = unsafe { Arc::new(Pl011Uart::new(vaddr)) };
+    uart.init().unwrap();
+    irq_manager
+        .register_and_enable_local_irq(irq_num, uart.clone())
+        .unwrap();
+
+    Some(uart)
 }

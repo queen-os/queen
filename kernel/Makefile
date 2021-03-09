@@ -50,9 +50,9 @@ clean:
 gdb:
 	gdb-multiarch -x release.gdb
 
-dumpdts:
-	$(qemu) -s -M virt,dumpdtb=virt.dtb,gic-version=3,its=off -m 1G -cpu $(target_cpu) -smp $(smp) -serial stdio -display none
-	dtc virt.dtb
+dts:
+	$(qemu) -s -M virt,dumpdtb=../target/virt.dtb,gic-version=2,its=off -m 1G -cpu $(target_cpu) -smp $(smp) -serial stdio -display none
+	dtc -I dtb -O dts ../target/virt.dtb -o ../target/virt.dts
 
 asm:
 	$(objdump) --disassemble-all $(kernel) | less

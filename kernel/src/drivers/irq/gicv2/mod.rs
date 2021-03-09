@@ -22,6 +22,8 @@ pub struct GicV2 {
 }
 
 impl GicV2 {
+    pub const COMPATIBLE: &'static str = "arm,cortex-a15-gic";
+
     /// Create an instance.
     ///
     /// # Safety
@@ -38,7 +40,7 @@ impl GicV2 {
 
 impl Driver for GicV2 {
     fn compatible(&self) -> &'static str {
-        "arm,cortex-a15-gic"
+        Self::COMPATIBLE
     }
 
     fn init(&self) -> drivers::Result<()> {
@@ -93,4 +95,22 @@ impl IrqManager for GicV2 {
         // Signal completion of handling.
         self.gicc.mark_completed(irq_number as u32);
     }
+}
+
+pub fn driver_init(device_tree: drivers::DeviceTree) -> Option<GicV2> {
+    use crate::memory::with_kernel_offset;
+    use fdt_rs::prelude::PropReader;
+
+    let gic_node = device_tree.find_node_with_prop(|prop| {
+        Ok(prop.name()?.eq("compatible") && prop.str()?.eq(GicV2::COMPATIBLE))
+    })?;
+    let mut reg_range_iter = device_tree.node_reg_range_iter(&gic_node)?;
+
+    let gicd_mmio_start_addr = with_kernel_offset(reg_range_iter.next()?.start);
+    let gicc_mmio_start_addr = with_kernel_offset(reg_range_iter.next()?.start);
+
+    let gic = unsafe { GicV2::new(gicd_mmio_start_addr, gicc_mmio_start_addr) };
+    gic.init().unwrap();
+
+    Some(gic)
 }

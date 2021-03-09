@@ -1,6 +1,6 @@
-use register::{mmio::*, register_bitfields, register_structs};
-
 use crate::drivers::{self, common::MMIODerefWrapper, Driver};
+use alloc::sync::Arc;
+use register::{mmio::*, register_bitfields, register_structs};
 
 use super::RtcDriver;
 
@@ -64,6 +64,8 @@ pub struct Pl031Rtc {
 }
 
 impl Pl031Rtc {
+    pub const COMPATIBLE: &'static str = "arm,pl031";
+
     /// Create an instance.
     ///
     /// # Safety
@@ -83,7 +85,7 @@ impl Pl031Rtc {
 
 impl Driver for Pl031Rtc {
     fn compatible(&self) -> &'static str {
-        "arm,pl031"
+        Self::COMPATIBLE
     }
 
     fn init(&self) -> drivers::Result<()> {
@@ -112,4 +114,25 @@ impl RtcDriver for Pl031Rtc {
     fn read_epoch(&self) -> u64 {
         self.registers.DR.get() as u64
     }
+}
+
+pub fn driver_init(
+    device_tree: drivers::DeviceTree,
+    irq_manager: &impl drivers::IrqManager,
+) -> Option<Arc<Pl031Rtc>> {
+    use crate::memory::with_kernel_offset;
+    use fdt_rs::prelude::PropReader;
+
+    let rtc_node = device_tree.find_node_with_prop(|prop| {
+        Ok(prop.name()?.eq("compatible") && prop.str()?.eq(Pl031Rtc::COMPATIBLE))
+    })?;
+
+    let vaddr = with_kernel_offset(device_tree.node_reg_range_iter(&rtc_node)?.next()?.start);
+    let irq_num = device_tree.node_interrupt_cell(&rtc_node)?.irq_number();
+
+    let rtc = unsafe { Arc::new(Pl031Rtc::new(vaddr)) };
+    rtc.init().unwrap();
+    irq_manager.register_and_enable_local_irq(irq_num, rtc.clone()).unwrap();
+
+    Some(rtc)
 }

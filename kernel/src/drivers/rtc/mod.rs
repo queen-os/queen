@@ -1,6 +1,6 @@
 use super::Driver;
 
-mod pl031;
+pub mod pl031;
 
 pub use pl031::Pl031Rtc;
 

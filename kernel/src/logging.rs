@@ -38,6 +38,7 @@ macro_rules! println {
     })
 }
 
+#[allow(unused)]
 macro_rules! dbg {
     () => {
         $crate::println!("[{}:{}]", core::file!(), core::line!());

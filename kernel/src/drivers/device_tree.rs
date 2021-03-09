@@ -108,6 +108,28 @@ impl<'dt> DeviceTree<'dt> {
             range_count,
         })
     }
+
+    pub fn node_interrupt_cell<'a>(&self, node: &'a DevTreeNode<'a, 'dt>) -> Option<InterruptCell> {
+        let interrupt_prop = utils::find_prop_by_name(node, "interrupts")?;
+        assert!(interrupt_prop.length() >= 12);
+
+        Some(InterruptCell {
+            r#type: interrupt_prop.u32(0).ok()?,
+            interrupt_number: interrupt_prop.u32(1).ok()?,
+            flag: interrupt_prop.u32(2).ok()?,
+        })
+    }
+}
+
+impl<'dt> DeviceTree<'dt> {
+    /// Returns physical memory address `start..end`
+    pub fn probe_memory(&self) -> Option<Range<usize>> {
+        let mem_node = self.find_node_with_prop(|prop| {
+            Ok(prop.name()?.eq("device_type") && prop.str()?.eq("memory"))
+        })?;
+
+        self.node_reg_range_iter(&mem_node)?.next()
+    }
 }
 
 pub struct RegRangeIter<'a, 'dt: 'a> {
@@ -145,6 +167,40 @@ impl<'a, 'dt: 'a> Iterator for RegRangeIter<'a, 'dt> {
     }
 }
 
+/// For `#interrupt-cells=3` and GIC as interrupt controller cases.
+///
+/// [Reference](https://elixir.bootlin.com/linux/v4.3/source/Documentation/devicetree/bindings/arm/gic.txt)
+// TODO: More flexible.
+pub struct InterruptCell {
+    /// 0 for SPI interrupts, 1 for PPI interrupts.
+    r#type: u32,
+    /// the interrupt number for the interrupt type.
+    /// SPI interrupts are in the range [0-987]. PPI interrupts are in the range [0-15].
+    interrupt_number: u32,
+    #[allow(unused)]
+    flag: u32,
+}
+
+impl InterruptCell {
+    #[inline]
+    pub fn new(r#type: u32, interrupt_number: u32, flag: u32) -> Self {
+        Self {
+            r#type,
+            interrupt_number,
+            flag,
+        }
+    }
+
+    #[inline]
+    pub fn irq_number(&self) -> usize {
+        (match self.r#type {
+            0 => self.interrupt_number + 32,
+            1 => self.interrupt_number + 16,
+            _ => unreachable!(),
+        }) as usize
+    }
+}
+
 mod utils {
     use super::*;
 
@@ -155,6 +211,7 @@ mod utils {
             .map(|x| x as usize)
     }
 
+    #[allow(unused)]
     pub fn read_node_prop_u64(node: &DevTreeNode, prop_name: &str, index: usize) -> Option<usize> {
         find_prop_by_name(node, prop_name)?
             .u64(index)
@@ -170,16 +227,5 @@ mod utils {
             .find(|prop| Ok(prop.name()?.eq(prop_name)))
             .ok()
             .flatten()
-    }
-}
-
-impl<'dt> DeviceTree<'dt> {
-    /// Returns physical memory address `start..end`
-    pub fn probe_memory(&self) -> Option<Range<usize>> {
-        let mem_node = self.find_node_with_prop(|prop| {
-            Ok(prop.name()?.eq("device_type") && prop.str()?.eq("memory"))
-        })?;
-
-        self.node_reg_range_iter(&mem_node)?.next()
     }
 }

@@ -4,7 +4,7 @@ use super::bsp::{PERIPHERALS_END, PERIPHERALS_START};
 use crate::{
     consts::KERNEL_OFFSET,
     memory::{
-        handler::Linear, init_heap, kernel_offset, MMIOType, MemoryAttr, MemorySet,
+        handler::Linear, init_heap, without_kernel_offset, MMIOType, MemoryAttr, MemorySet,
         FRAME_ALLOCATOR, PAGE_SIZE,
     },
     sync::spin::MutexNoIrq as Mutex,
@@ -42,7 +42,7 @@ pub fn init_other() {
 }
 
 fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
-    let page_start = ((kernel_offset(_end as usize) - phys_mem_range.start) / PAGE_SIZE) as usize;
+    let page_start = ((without_kernel_offset(_end as usize) - phys_mem_range.start) / PAGE_SIZE) as usize;
     let page_end = ((phys_mem_range.len() - 1) / PAGE_SIZE + 1) as usize;
     FRAME_ALLOCATOR.lock().insert(page_start..page_end);
     info!("FrameAllocator init end");

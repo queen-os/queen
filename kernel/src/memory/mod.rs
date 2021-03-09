@@ -45,8 +45,13 @@ pub const fn virt_to_phys(addr: VirtAddr) -> PhysAddr {
 
 /// Convert virtual address to the offset of kernel
 #[inline]
-pub const fn kernel_offset(addr: VirtAddr) -> VirtAddr {
+pub const fn without_kernel_offset(addr: VirtAddr) -> VirtAddr {
     addr - KERNEL_OFFSET
+}
+
+#[inline]
+pub const fn with_kernel_offset(addr: VirtAddr) -> VirtAddr {
+    addr + KERNEL_OFFSET
 }
 
 pub fn alloc_frames(count: usize) -> Option<PhysAddr> {

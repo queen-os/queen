@@ -1,13 +1,10 @@
 //! Interrupt and exception for aarch64.
 
 pub use self::handler::*;
-use super::timer::GenericTimer;
-use crate::drivers::{
-    irq::GicV2, rtc::Pl031Rtc, serial::Pl011Uart, DeviceTree, Driver, IrqManager,
-};
+
+use crate::drivers::{self, irq::GicV2, DeviceTree, Driver};
 use aarch64::registers::*;
-use alloc::sync::Arc;
-use spin::Lazy;
+use spin::Once;
 
 pub mod consts;
 pub mod handler;
@@ -57,27 +54,23 @@ pub fn wait_for_interrupt() {
     DAIF.set(daif);
 }
 
-pub static IRQ_MANAGER: Lazy<GicV2> = Lazy::new(|| unsafe { GicV2::new(0x08000000, 0x8010000) });
+pub static IRQ_MANAGER: Once<GicV2> = Once::new();
 
-pub fn init(_device_tree: DeviceTree) {
+pub fn init(device_tree: DeviceTree) {
     unsafe {
         aarch64::trap::init();
-        IRQ_MANAGER.init().unwrap();
+    }
 
-        let timer = Arc::new(GenericTimer::new());
-        timer.init().unwrap();
-        IRQ_MANAGER
-            .register_and_enable_local_irq(30, timer)
-            .unwrap();
+    let irq_manager = drivers::irq::gicv2::driver_init(device_tree).unwrap();
+    irq_manager.init().unwrap();
 
-        let uart = Arc::new(Pl011Uart::new(0x9000000));
-        uart.init().unwrap();
-        IRQ_MANAGER.register_and_enable_local_irq(33, uart).unwrap();
+    crate::arch::timer::driver_init(device_tree, &irq_manager);
+    drivers::serial::pl011_uart::driver_init(device_tree, &irq_manager);
+    drivers::rtc::pl031::driver_init(device_tree, &irq_manager);
 
-        let rtc = Arc::new(Pl031Rtc::new(0x09010000));
-        rtc.init().unwrap();
-        IRQ_MANAGER.register_and_enable_local_irq(34, rtc).unwrap();
+    IRQ_MANAGER.call_once(|| irq_manager);
 
+    unsafe {
         enable();
     }
 }
@@ -85,7 +78,7 @@ pub fn init(_device_tree: DeviceTree) {
 pub fn init_other() {
     unsafe {
         aarch64::trap::init();
-        IRQ_MANAGER.init().unwrap();
+        IRQ_MANAGER.wait().init().unwrap();
         enable();
     }
 }
