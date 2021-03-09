@@ -45,6 +45,21 @@ unsafe extern "C" fn main_start() -> ! {
     crate::kmain();
 }
 
+fn async_test() {
+    use crate::task::*;
+    use core::time::Duration;
+
+    let task = spawn(async {
+        loop {
+            println!("Hello from a kernel task!");
+            delay_for(Duration::from_secs(1)).await;
+        }
+    });
+    task.detach();
+
+    GLOBAL_EXECUTOR.run();
+}
+
 #[no_mangle]
 unsafe extern "C" fn others_start() -> ! {
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());

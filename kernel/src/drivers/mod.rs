@@ -1,3 +1,5 @@
+pub mod block;
+pub mod bus;
 mod common;
 pub mod device_tree;
 pub mod gpio;

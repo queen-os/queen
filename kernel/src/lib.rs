@@ -21,6 +21,7 @@ pub mod arch;
 mod backtrace;
 pub mod consts;
 pub mod drivers;
+pub mod fs;
 mod lang;
 pub mod memory;
 pub mod process;
