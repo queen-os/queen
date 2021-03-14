@@ -8,7 +8,6 @@ use core::{
 };
 
 pub static TIMER: MutexNoIrq<Timer> = MutexNoIrq::new(Timer::new());
-const PHYSICAL_TIMER: arch::timer::GenericTimer = arch::timer::GenericTimer {};
 
 /// A naive timer.
 #[derive(Default)]
@@ -48,7 +47,7 @@ impl Timer {
 /// Creates a timer that expires after the given duration of time.
 pub async fn delay_for(duration: Duration) {
     DelayFuture {
-        deadline: PHYSICAL_TIMER.read() + duration,
+        deadline: arch::timer::read() + duration,
     }
     .await;
 }
@@ -63,7 +62,7 @@ impl Future for DelayFuture {
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let deadline = self.deadline;
         // fast path
-        if PHYSICAL_TIMER.read() >= deadline {
+        if arch::timer::read() >= deadline {
             return Poll::Ready(());
         }
         let waker = cx.waker().clone();

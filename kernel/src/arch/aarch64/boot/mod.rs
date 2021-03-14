@@ -2,7 +2,6 @@ use super::{
     bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START},
     consts::KERNEL_OFFSET,
 };
-use crate::memory::phys_to_virt;
 use aarch64::{
     addr::{align_down, align_up, ALIGN_2MIB},
     asm::cpuid,

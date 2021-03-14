@@ -51,7 +51,7 @@ impl Driver for GenericTimer {
 
     fn handle_interrupt(&self) {
         crate::task::timer::TIMER.lock().expire(self.read());
-        self.tick_in(10 * 1000);
+        self.tick_in(crate::task::executor::SCHED_MIN_GRANULARITY);
     }
 
     fn device_type(&self) -> drivers::DeviceType {
@@ -70,4 +70,9 @@ pub fn driver_init(
         .unwrap();
 
     Some(timer)
+}
+
+#[inline]
+pub fn read() -> Duration {
+    GenericTimer::new().read()
 }

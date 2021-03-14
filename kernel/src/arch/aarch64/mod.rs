@@ -41,6 +41,7 @@ unsafe extern "C" fn main_start() -> ! {
     interrupt::init(device_tree);
 
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
+    async_test();
     AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();
 }
