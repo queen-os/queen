@@ -1,8 +1,8 @@
 use core::fmt::{self, Write};
 use log::{Level, LevelFilter, Log};
-use spin::Mutex;
+use crate::sync::spin::MutexNoIrq;
 
-static LOG_LOCK: Mutex<()> = Mutex::new(());
+static LOG_LOCK: MutexNoIrq<()> = MutexNoIrq::new(());
 
 pub fn init() {
     static LOGGER: SimpleLogger = SimpleLogger;
@@ -13,7 +13,7 @@ pub fn init() {
         Some("info") => LevelFilter::Info,
         Some("debug") => LevelFilter::Debug,
         Some("trace") => LevelFilter::Trace,
-        _ => LevelFilter::Info,
+        _ => LevelFilter::Debug,
     });
 }
 

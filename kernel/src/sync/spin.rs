@@ -1,5 +1,6 @@
 use core::{
     fmt,
+    mem::ManuallyDrop,
     ops::{Deref, DerefMut},
 };
 use spin::MutexGuard;
@@ -41,7 +42,8 @@ impl<T> MutexNoIrq<T> {
     /// and the lock will be dropped when the guard falls out of scope.
     #[inline]
     pub fn lock(&self) -> MutexGuardNoIrq<T> {
-        MutexGuardNoIrq::new(self.0.lock())
+        let flags = unsafe { crate::arch::interrupt::disable_and_store() };
+        MutexGuardNoIrq::new(self.0.lock(), flags)
     }
 
     /// Force unlock this [`Mutex`].
@@ -59,7 +61,10 @@ impl<T> MutexNoIrq<T> {
     /// Try to lock this [`Mutex`], returning a lock guard if successful.
     #[inline]
     pub fn try_lock(&self) -> Option<MutexGuardNoIrq<T>> {
-        self.0.try_lock().map(MutexGuardNoIrq::new)
+        let flags = unsafe { crate::arch::interrupt::disable_and_store() };
+        self.0
+            .try_lock()
+            .map(|guard| MutexGuardNoIrq::new(guard, flags))
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -92,20 +97,25 @@ impl<T> From<T> for MutexNoIrq<T> {
 }
 
 pub struct MutexGuardNoIrq<'a, T: 'a> {
-    inner: MutexGuard<'a, T>,
+    inner: ManuallyDrop<MutexGuard<'a, T>>,
     flags: usize,
 }
 
 impl<'a, T: 'a> MutexGuardNoIrq<'a, T> {
-    fn new(inner: MutexGuard<'a, T>) -> Self {
-        let flags = unsafe { crate::arch::interrupt::disable_and_store() };
-        MutexGuardNoIrq { inner, flags }
+    fn new(inner: MutexGuard<'a, T>, flags: usize) -> Self {
+        MutexGuardNoIrq {
+            inner: ManuallyDrop::new(inner),
+            flags,
+        }
     }
 }
 
 impl<'a, T: 'a> Drop for MutexGuardNoIrq<'a, T> {
     fn drop(&mut self) {
-        unsafe { crate::arch::interrupt::restore(self.flags) }
+        unsafe {
+            ManuallyDrop::drop(&mut self.inner);
+            crate::arch::interrupt::restore(self.flags);
+        }
     }
 }
 
