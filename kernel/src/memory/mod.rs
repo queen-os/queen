@@ -34,7 +34,7 @@ pub const PAGE_SIZE: usize = 1 << 12;
 /// Convert physical address to virtual address
 #[inline]
 pub const fn phys_to_virt(addr: PhysAddr) -> VirtAddr {
-    PHYSICAL_MEMORY_OFFSET + addr
+    addr + PHYSICAL_MEMORY_OFFSET
 }
 
 /// Convert virtual address to physical address
@@ -45,13 +45,13 @@ pub const fn virt_to_phys(addr: VirtAddr) -> PhysAddr {
 
 /// Convert virtual address to the offset of kernel
 #[inline]
-pub const fn without_kernel_offset(addr: VirtAddr) -> VirtAddr {
-    addr - KERNEL_OFFSET
+pub const fn as_lower_range(addr: VirtAddr) -> VirtAddr {
+    addr & !KERNEL_OFFSET
 }
 
 #[inline]
-pub const fn with_kernel_offset(addr: VirtAddr) -> VirtAddr {
-    addr + KERNEL_OFFSET
+pub const fn as_upper_range(addr: VirtAddr) -> VirtAddr {
+    addr | KERNEL_OFFSET
 }
 
 pub fn alloc_frames(count: usize) -> Option<PhysAddr> {

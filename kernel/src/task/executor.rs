@@ -2,6 +2,7 @@ use crate::{arch, sync::spin::MutexNoIrq};
 use alloc::{collections::BTreeMap, sync::Arc};
 use async_task::{Runnable, Task};
 use core::{
+    cmp,
     future::Future,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -136,7 +137,7 @@ impl TaskQueue {
             let (
                 next_tid,
                 TaskPriority {
-                    runnable: next_runnable,
+                    runnable: _,
                     vruntime: next_vruntime,
                 },
             ) = self.ready_tasks.peek()?;
@@ -154,14 +155,14 @@ impl TaskQueue {
             }
         }
 
-        let (tid, TaskPriority { runnable, vruntime }) = self.ready_tasks.pop()?;
+        let (tid, TaskPriority { runnable, .. }) = self.ready_tasks.pop()?;
         self.current_task.replace(tid);
         self.tasks.get(&tid).map(|&task| (task, runnable))
     }
 
     /// Insert or update a task to ready.
     fn push_task_to_ready(&mut self, tid: usize, default_priority: isize, runnable: Runnable) {
-        // TODO: 
+        // TODO:
         let min_vruntime = self.min_vruntime();
         let task = self
             .tasks
@@ -211,16 +212,16 @@ impl TaskPriority {
 }
 
 impl Ord for TaskPriority {
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
         self.vruntime.cmp(&other.vruntime).reverse()
     }
 }
 
 impl PartialOrd for TaskPriority {
-    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         self.vruntime
             .partial_cmp(&other.vruntime)
-            .map(core::cmp::Ordering::reverse)
+            .map(cmp::Ordering::reverse)
     }
 }
 

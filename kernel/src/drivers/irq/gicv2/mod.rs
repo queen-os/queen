@@ -98,7 +98,7 @@ impl IrqManager for GicV2 {
 }
 
 pub fn driver_init(device_tree: drivers::DeviceTree) -> Option<GicV2> {
-    use crate::memory::with_kernel_offset;
+    use crate::memory::as_upper_range;
     use fdt_rs::prelude::PropReader;
 
     let gic_node = device_tree.find_node_with_prop(|prop| {
@@ -106,8 +106,8 @@ pub fn driver_init(device_tree: drivers::DeviceTree) -> Option<GicV2> {
     })?;
     let mut reg_range_iter = device_tree.node_reg_range_iter(&gic_node)?;
 
-    let gicd_mmio_start_addr = with_kernel_offset(reg_range_iter.next()?.start);
-    let gicc_mmio_start_addr = with_kernel_offset(reg_range_iter.next()?.start);
+    let gicd_mmio_start_addr = as_upper_range(reg_range_iter.next()?.start);
+    let gicc_mmio_start_addr = as_upper_range(reg_range_iter.next()?.start);
 
     let gic = unsafe { GicV2::new(gicd_mmio_start_addr, gicc_mmio_start_addr) };
     gic.init().unwrap();

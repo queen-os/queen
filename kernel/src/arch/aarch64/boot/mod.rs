@@ -1,7 +1,6 @@
-use super::{
-    bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START},
-    consts::KERNEL_OFFSET,
-};
+use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
+use crate::memory::{as_upper_range, as_lower_range};
+
 use aarch64::{
     addr::{align_down, align_up, ALIGN_2MIB},
     asm::cpuid,
@@ -13,6 +12,7 @@ use aarch64::{
     registers::*,
     translation,
 };
+use core::ptr;
 
 global_asm!(include_str!("entry.S"));
 
@@ -30,18 +30,23 @@ fn map_2mib(p2: &mut PageTable, start: usize, end: usize, flag: EF, attr: Attr) 
 #[no_mangle]
 #[link_section = ".text.boot"]
 pub extern "C" fn create_init_paging() {
-    let p4 = unsafe { &mut *(page_table_lvl4 as *mut PageTable) };
-    let p3 = unsafe { &mut *(page_table_lvl3 as *mut PageTable) };
-    let p2_0 = unsafe { &mut *(page_table_lvl2_0 as *mut PageTable) };
-    let p2_1 = unsafe { &mut *(page_table_lvl2_1 as *mut PageTable) };
+    let p4 = unsafe { &mut *(as_lower_range(page_table_lvl4 as usize) as *mut PageTable) };
+    let p3 = unsafe { &mut *(as_lower_range(page_table_lvl3 as usize) as *mut PageTable) };
+    let p2_0 =
+        unsafe { &mut *(as_lower_range(page_table_lvl2_0 as usize) as *mut PageTable) };
+    let p2_1 =
+        unsafe { &mut *(as_lower_range(page_table_lvl2_1 as usize) as *mut PageTable) };
     p4.clear();
     p3.clear();
     p2_0.clear();
     p2_1.clear();
 
-    let frame_lvl3 = Frame::<Size4KiB>::of_addr(page_table_lvl3 as usize as u64);
-    let frame_lvl2_0 = Frame::<Size4KiB>::of_addr(page_table_lvl2_0 as usize as u64);
-    let frame_lvl2_1 = Frame::<Size4KiB>::of_addr(page_table_lvl2_1 as usize as u64);
+    let frame_lvl3 =
+        Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl3 as usize) as u64);
+    let frame_lvl2_0 =
+        Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl2_0 as usize) as u64);
+    let frame_lvl2_1 =
+        Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl2_1 as usize) as u64);
 
     // 0x0000_0000_0000 ~ 0x0080_0000_0000
     p4[0].set_frame(frame_lvl3, EF::default_table(), Attr::new(0, 0, 0));
@@ -54,14 +59,6 @@ pub extern "C" fn create_init_paging() {
     p3[1].set_frame(frame_lvl2_1, EF::default_table(), Attr::new(0, 0, 0));
 
     let block_flags = EF::default_block() | EF::UXN;
-    // normal memory
-    map_2mib(
-        p2_1,
-        MEMORY_START,
-        MEMORY_END,
-        block_flags,
-        MairNormal::attr_value(),
-    );
     // device memory
     map_2mib(
         p2_0,
@@ -69,6 +66,14 @@ pub extern "C" fn create_init_paging() {
         PERIPHERALS_END,
         block_flags | EF::PXN,
         MairDevice::attr_value(),
+    );
+    // normal memory
+    map_2mib(
+        p2_1,
+        MEMORY_START,
+        MEMORY_END,
+        block_flags,
+        MairNormal::attr_value(),
     );
 }
 
@@ -104,14 +109,15 @@ pub unsafe extern "C" fn enable_mmu() {
     );
 
     // Set both TTBR0_EL1 and TTBR1_EL1
-    let frame_lvl4 = Frame::<Size4KiB>::of_addr(page_table_lvl4 as usize as u64);
+    let frame_lvl4 =
+        Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl4 as usize) as u64);
     translation::ttbr_el1_write(0, frame_lvl4);
     translation::ttbr_el1_write(1, frame_lvl4);
     translation::local_invalidate_tlb_all();
 
     // Set new stack pointer and link register.
-    SP.set((KERNEL_OFFSET + bootstacktop as usize - (cpuid() << 18)) as u64);
-    LR.set(LR.get() + KERNEL_OFFSET as u64);
+    SP.set((as_upper_range(bootstacktop as usize) - (cpuid() << 18)) as u64);
+    LR.set(as_upper_range(LR.get() as usize) as u64);
 
     barrier::isb(barrier::SY);
     // Enable the MMU and turn on data and instruction caching.
@@ -127,11 +133,11 @@ pub unsafe extern "C" fn enable_mmu() {
 #[no_mangle]
 #[link_section = ".text.boot"]
 pub extern "C" fn clear_bss() {
-    let start = sbss as usize;
-    let end = ebss as usize;
+    let start = as_lower_range(sbss as usize);
+    let end = as_lower_range(ebss as usize);
     let step = core::mem::size_of::<usize>();
     for i in (start..end).step_by(step) {
-        unsafe { (i as *mut usize).write(0) };
+        unsafe { ptr::write_volatile(i as *mut usize, 0) };
     }
 }
 

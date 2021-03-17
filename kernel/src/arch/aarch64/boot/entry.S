@@ -116,6 +116,7 @@ other_cpu_startup:
     adrp    x0, _start
     sub     x0, x0, x19, lsl #16
     mov     sp, x0
+    wfi
     bl      enable_mmu
     b       others_start
 

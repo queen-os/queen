@@ -1,8 +1,8 @@
 arch := aarch64
 board := virt
 qemu := qemu-system-$(arch)
-objcopy := ~/gcc-aarch64-none-elf/bin/aarch64-none-elf-objcopy
-objdump := ~/gcc-aarch64-none-elf/bin/aarch64-none-elf-objdump
+objcopy := aarch64-none-elf-objcopy
+objdump := aarch64-none-elf-objdump
 target := aarch64-unknown-none-softfloat
 target_cpu := cortex-a72
 mode := release

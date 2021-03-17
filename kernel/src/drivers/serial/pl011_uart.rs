@@ -446,14 +446,14 @@ pub fn driver_init(
     device_tree: drivers::DeviceTree,
     irq_manager: &impl drivers::IrqManager,
 ) -> Option<Arc<Pl011Uart>> {
-    use crate::memory::with_kernel_offset;
+    use crate::memory::as_upper_range;
     use fdt_rs::prelude::PropReader;
 
     let uart_node = device_tree.find_node_with_prop(|prop| {
         Ok(prop.name()?.eq("compatible") && prop.str()?.eq(Pl011Uart::COMPATIBLE))
     })?;
 
-    let vaddr = with_kernel_offset(device_tree.node_reg_range_iter(&uart_node)?.next()?.start);
+    let vaddr = as_upper_range(device_tree.node_reg_range_iter(&uart_node)?.next()?.start);
     crate::arch::bsp::uart::set_new_uart(vaddr);
     let irq_num = device_tree.node_interrupt_cell(&uart_node)?.irq_number();
 
