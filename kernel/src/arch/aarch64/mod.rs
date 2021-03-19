@@ -1,11 +1,10 @@
+use alloc::vec::Vec;
 use core::{
     hint::spin_loop,
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use alloc::vec::Vec;
-
-use crate::drivers;
+use crate::{drivers, memory::phys_to_virt};
 
 mod boot;
 #[cfg_attr(feature = "bsp_virt", path = "bsp/virt/mod.rs")]
@@ -32,8 +31,7 @@ unsafe extern "C" fn main_start() -> ! {
         device_tree.probe_memory().unwrap(),
     ));
 
-    let device_tree =
-        drivers::DeviceTree::from_raw(crate::memory::phys_to_virt(device_tree_addr)).unwrap();
+    let device_tree = drivers::DeviceTree::from_raw(phys_to_virt(device_tree_addr)).unwrap();
     let mut buf = Vec::<u8>::with_capacity(device_tree.totalsize());
     buf.extend_from_slice(device_tree.device_tree().buf());
     let device_tree = drivers::DeviceTree::new(buf.as_slice()).unwrap();

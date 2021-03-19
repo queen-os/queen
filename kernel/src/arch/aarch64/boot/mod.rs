@@ -1,5 +1,5 @@
-use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
-use crate::memory::{as_upper_range, as_lower_range};
+use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START, uart::uart};
+use crate::memory::{as_lower_range, as_upper_range};
 
 use aarch64::{
     addr::{align_down, align_up, ALIGN_2MIB},
@@ -12,7 +12,7 @@ use aarch64::{
     registers::*,
     translation,
 };
-use core::ptr;
+use core::{fmt::Write, ptr};
 
 global_asm!(include_str!("entry.S"));
 
@@ -22,27 +22,26 @@ fn map_2mib(p2: &mut PageTable, start: usize, end: usize, flag: EF, attr: Attr) 
     let aligned_end = align_up(end as u64, ALIGN_2MIB);
     for frame in Frame::<Size2MiB>::range_of(aligned_start, aligned_end) {
         let paddr = frame.start_address();
-        let page = Page::<Size2MiB>::of_addr(paddr.as_usize() as u64);
+        let page = Page::<Size2MiB>::of_addr(paddr.as_u64());
         p2[page.p2_index()].set_block::<Size2MiB>(paddr, flag, attr);
     }
 }
 
 #[no_mangle]
 #[link_section = ".text.boot"]
-pub extern "C" fn create_init_paging() {
-    let p4 = unsafe { &mut *(as_lower_range(page_table_lvl4 as usize) as *mut PageTable) };
-    let p3 = unsafe { &mut *(as_lower_range(page_table_lvl3 as usize) as *mut PageTable) };
-    let p2_0 =
-        unsafe { &mut *(as_lower_range(page_table_lvl2_0 as usize) as *mut PageTable) };
-    let p2_1 =
-        unsafe { &mut *(as_lower_range(page_table_lvl2_1 as usize) as *mut PageTable) };
+pub unsafe extern "C" fn create_init_paging() {
+    let p4 = &mut *(as_lower_range(page_table_lvl4 as usize) as *mut PageTable);
+    let p3 = &mut *(as_lower_range(page_table_lvl3 as usize) as *mut PageTable);
+    let p2_0 = &mut *(as_lower_range(page_table_lvl2_0 as usize) as *mut PageTable);
+    let p2_1 = &mut *(as_lower_range(page_table_lvl2_1 as usize) as *mut PageTable);
+
     p4.clear();
     p3.clear();
     p2_0.clear();
     p2_1.clear();
 
-    let frame_lvl3 =
-        Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl3 as usize) as u64);
+
+    let frame_lvl3 = Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl3 as usize) as u64);
     let frame_lvl2_0 =
         Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl2_0 as usize) as u64);
     let frame_lvl2_1 =
@@ -109,8 +108,7 @@ pub unsafe extern "C" fn enable_mmu() {
     );
 
     // Set both TTBR0_EL1 and TTBR1_EL1
-    let frame_lvl4 =
-        Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl4 as usize) as u64);
+    let frame_lvl4 = Frame::<Size4KiB>::of_addr(as_lower_range(page_table_lvl4 as usize) as u64);
     translation::ttbr_el1_write(0, frame_lvl4);
     translation::ttbr_el1_write(1, frame_lvl4);
     translation::local_invalidate_tlb_all();
@@ -132,12 +130,12 @@ pub unsafe extern "C" fn enable_mmu() {
 
 #[no_mangle]
 #[link_section = ".text.boot"]
-pub extern "C" fn clear_bss() {
+pub unsafe extern "C" fn clear_bss() {
     let start = as_lower_range(sbss as usize);
     let end = as_lower_range(ebss as usize);
     let step = core::mem::size_of::<usize>();
     for i in (start..end).step_by(step) {
-        unsafe { ptr::write_volatile(i as *mut usize, 0) };
+        ptr::write_volatile(i as *mut usize, 0);
     }
 }
 
