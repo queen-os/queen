@@ -10,10 +10,7 @@ _start:
     # compare and branch if non zero
     cbnz    x19, halt
 
-    adrp    x0, _start
-    sub     x0, x0, x19, lsl #16
-    mov     sp, x0
-
+    bl      el_setup
     bl      clear_bss
     bl      create_init_paging
     b       boot_cpu_startup
@@ -32,6 +29,8 @@ el_setup:
     mrs     x0, CurrentEL
     and     x0, x0, #0b1100
     lsr     x0, x0, #2
+    cmp     x0, #1
+    beq     el_setup_end
 switch_to_el2:
     # switch to EL2 if we're in EL3. otherwise switch to EL1
     cmp     x0, #2
