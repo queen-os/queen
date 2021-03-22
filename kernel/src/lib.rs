@@ -16,13 +16,15 @@ extern crate log;
 
 #[macro_use]
 mod logging;
+#[macro_use]
+mod lang;
+
 #[path = "arch/aarch64/mod.rs"]
 pub mod arch;
 mod backtrace;
 pub mod consts;
 pub mod drivers;
 pub mod fs;
-mod lang;
 pub mod memory;
 pub mod process;
 pub mod sync;

@@ -1,6 +1,6 @@
+use crate::sync::spin::MutexNoIrq;
 use core::fmt::{self, Write};
 use log::{Level, LevelFilter, Log};
-use crate::sync::spin::MutexNoIrq;
 
 static LOG_LOCK: MutexNoIrq<()> = MutexNoIrq::new(());
 

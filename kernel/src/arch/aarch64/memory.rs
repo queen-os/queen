@@ -4,7 +4,7 @@ use super::bsp::{PERIPHERALS_END, PERIPHERALS_START};
 use crate::{
     consts::KERNEL_OFFSET,
     memory::{
-        handler::Linear, init_heap, as_lower_range, MMIOType, MemoryAttr, MemorySet,
+        as_lower_range, handler::Linear, init_heap, MMIOType, MemoryAttr, MemorySet,
         FRAME_ALLOCATOR, PAGE_SIZE,
     },
     sync::spin::MutexNoIrq as Mutex,
@@ -42,8 +42,8 @@ pub fn init_other() {
 }
 
 fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
-    let page_start = ((as_lower_range(_end as usize) - phys_mem_range.start) / PAGE_SIZE) as usize;
-    let page_end = ((phys_mem_range.len() - 1) / PAGE_SIZE + 1) as usize;
+    let page_start = (as_lower_range(symbol_addr!("_end")) - phys_mem_range.start) / PAGE_SIZE;
+    let page_end = (phys_mem_range.len() - 1) / PAGE_SIZE + 1;
     FRAME_ALLOCATOR.lock().insert(page_start..page_end);
     info!("FrameAllocator init end");
 }
@@ -52,39 +52,38 @@ fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
 fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     let offset = -(KERNEL_OFFSET as isize);
     let mut ms = MemorySet::new();
-
     ms.push(
-        stext as usize,
-        etext as usize,
+        symbol_addr!("stext"),
+        symbol_addr!("etext"),
         MemoryAttr::default().execute().readonly(),
         Linear::new(offset),
         "text",
     );
     ms.push(
-        sdata as usize,
-        edata as usize,
+        symbol_addr!("sdata"),
+        symbol_addr!("edata"),
         MemoryAttr::default(),
         Linear::new(offset),
         "data",
     );
     ms.push(
-        srodata as usize,
-        erodata as usize,
+        symbol_addr!("srodata"),
+        symbol_addr!("erodata"),
         MemoryAttr::default().readonly(),
         Linear::new(offset),
         "rodata",
     );
 
     ms.push(
-        sbss as usize,
-        ebss as usize,
+        symbol_addr!("sbss"),
+        symbol_addr!("ebss"),
         MemoryAttr::default(),
         Linear::new(offset),
         "bss",
     );
     ms.push(
-        bootstack as usize,
-        bootstacktop as usize,
+        symbol_addr!("bootstack"),
+        symbol_addr!("bootstacktop"),
         MemoryAttr::default(),
         Linear::new(offset),
         "kstack",
@@ -120,21 +119,6 @@ pub fn ioremap(paddr: usize, len: usize, name: &'static str) -> usize {
         return vaddr;
     }
     0
-}
-
-extern "C" {
-    fn stext();
-    fn etext();
-    fn sdata();
-    fn edata();
-    fn srodata();
-    fn erodata();
-    fn sbss();
-    fn ebss();
-    fn bootstack();
-    fn bootstacktop();
-    fn _start();
-    fn _end();
 }
 
 pub fn set_page_table(vmtoken: usize) {

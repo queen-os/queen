@@ -132,7 +132,9 @@ pub fn driver_init(
 
     let rtc = unsafe { Arc::new(Pl031Rtc::new(vaddr)) };
     rtc.init().unwrap();
-    irq_manager.register_and_enable_local_irq(irq_num, rtc.clone()).unwrap();
+    irq_manager
+        .register_and_enable_local_irq(irq_num, rtc.clone())
+        .unwrap();
 
     Some(rtc)
 }

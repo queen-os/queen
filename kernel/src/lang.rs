@@ -13,3 +13,18 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 fn oom(_: core::alloc::Layout) -> ! {
     panic!("out of memory");
 }
+
+#[macro_export]
+#[allow(unused_unsafe)]
+macro_rules! symbol_addr {
+    ($symbol: expr) => {
+        {
+            let x: usize;
+            #[allow(unused_unsafe)]
+            unsafe {
+                asm!(concat!("adrp {}, ", $symbol), out(reg) x);
+            }
+            x
+        }
+    };
+}
