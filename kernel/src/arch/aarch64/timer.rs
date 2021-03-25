@@ -27,15 +27,20 @@ impl GenericTimer {
 
     #[inline]
     pub fn read(&self) -> Duration {
-        Duration::from_micros((CNTPCT_EL0.get() * 1000000 / Self::freq()) as u64)
+        Duration::from_nanos(self.read_ns())
     }
 
     #[inline]
-    pub fn tick_in(&self, us: usize) {
-        let count = Self::freq() * (us as u64) / 1000000;
+    pub fn read_ns(&self)-> u64 {
+        CNTPCT_EL0.get() * 1_000_000_000 / Self::freq()
+    }
+
+    #[inline]
+    pub fn tick_in(&self, ns: usize) {
+        let count = Self::freq() * (ns as u64) / 1_000_000_000;
         // max `68719476` us (0xffff_ffff / 38400000 * 62500000).
         debug_assert!(count <= u32::max_value() as u64);
-        CNTP_TVAL_EL0.set(count as u64);
+        CNTP_TVAL_EL0.set(count);
     }
 }
 
@@ -75,4 +80,9 @@ pub fn driver_init(
 #[inline]
 pub fn read() -> Duration {
     GenericTimer::new().read()
+}
+
+#[inline]
+pub fn read_ns() -> u64 {
+    GenericTimer::new().read_ns()
 }

@@ -14,6 +14,7 @@ fn oom(_: core::alloc::Layout) -> ! {
     panic!("out of memory");
 }
 
+/// Get the address of a symbol, using `adrp` instruction.
 #[macro_export]
 #[allow(unused_unsafe)]
 macro_rules! symbol_addr {
