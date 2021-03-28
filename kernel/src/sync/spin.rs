@@ -3,10 +3,11 @@ use core::{
     mem::ManuallyDrop,
     ops::{Deref, DerefMut},
 };
-use spin::MutexGuard;
 
-pub use spin::RwLock;
-pub type Mutex<T> = spin::Mutex<T>;
+pub use spin::{
+    Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockUpgradableGuard, RwLockWriteGuard,
+};
+
 pub struct MutexNoIrq<T>(Mutex<T>);
 
 unsafe impl<T: Send> Sync for MutexNoIrq<T> {}

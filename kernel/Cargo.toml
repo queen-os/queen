@@ -15,10 +15,18 @@ bsp_virt = []
 aarch64 = { path = "../aarch64" }
 allocators = { git = "https://github.com/songzhi/allocators" }
 log = "0.4"
-spin = "0.8"
+spin = { version = "0.9", default-features = false, features = [
+    "mutex",
+    "spin_mutex",
+    "rwlock",
+    "once",
+    "lazy",
+] }
 register = { version = "1.0", features = ["no_std_unit_tests"] }
 fdt-rs = { version = "0.4", default-features = false }
 num_enum = { version = "0.5", default-features = false }
 async-task = { version = "4.0", default-features = false }
-priority-queue = "1.0"
-hashbrown = "0.11"
+priority-queue = "1.1"
+ahash = { version = "0.7", default-features = false }
+bitflags = "1.2"
+vec-arena = "1.1"
