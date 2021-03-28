@@ -17,6 +17,13 @@ SECTIONS
     erodata = .;
   }
 
+  .got : {
+    sgot = .;
+    *(.got .got.* .gnu.linkonce.d*)
+    . = ALIGN(4K);
+    egot = .;
+  }
+
   .data : {
     sdata = .;
     *(.data .data.* .gnu.linkonce.d*)

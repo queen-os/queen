@@ -5,13 +5,18 @@ pub mod executor;
 mod future;
 pub mod timer;
 
-pub use executor::Executor;
+pub use executor::{Executor, local_executor};
 pub use future::*;
 pub use timer::delay_for;
 
-pub static GLOBAL_EXECUTOR: spin::Lazy<Executor> = spin::Lazy::new(Executor::new);
+pub fn init(cpu_count: usize) {
+    executor::init(cpu_count);
+    debug!("Task module init end");
+}
 
 #[inline]
-pub fn spawn<T: Send>(future: impl Future<Output = T> + Send) -> Task<T> {
-    GLOBAL_EXECUTOR.spawn(future, 0)
+pub fn spawn(future: impl Future<Output = ()> + Send) -> Task<()> {
+    executor::local_executor()
+        .spawn(future, 0, Default::default())
+        .0
 }

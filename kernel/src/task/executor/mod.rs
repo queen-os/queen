@@ -13,7 +13,7 @@ use core::{
     ops::{self, Not},
 };
 use priority_queue::PriorityQueue;
-use spin::Once;
+use spin::{Lazy, Once};
 use vec_arena::Arena;
 
 pub mod features;
@@ -52,7 +52,7 @@ const SCHED_CHILD_RUNS_FIRST: bool = false;
 /// Default task weight.
 const NICE_0_WEIGHT: usize = nice_to_weight(0);
 
-const SCHED_FEAT: SchedFeatures = SchedFeatures::new();
+static SCHED_FEAT: Lazy<SchedFeatures> = Lazy::new(SchedFeatures::new);
 
 /// Higher nice value means lower priority.
 pub const MAX_NICE: isize = 19;
@@ -63,7 +63,7 @@ type Tid = usize;
 type Task = async_task::Task<()>;
 type ExecutorRef = Arc<Executor>;
 type RunQueueRef = Arc<MutexNoIrq<RunQueue>>;
-type SchedTaskRef = Arc<Mutex<SchedTask>>;
+pub type SchedTaskRef = Arc<Mutex<SchedTask>>;
 
 static GLOBAL_STATE: Once<GlobalState> = Once::new();
 
@@ -80,7 +80,8 @@ fn global_state() -> &'static GlobalState {
 
 /// Get the local executor for this CPU.
 #[inline]
-fn local_executor() -> ExecutorRef {
+pub fn local_executor() -> ExecutorRef {
+    debug!("{}", global_state().executors.get(crate::cpu::id()).is_some());
     global_state().executors[crate::cpu::id()].clone()
 }
 
@@ -149,7 +150,7 @@ impl Executor {
         executor
     }
 
-    fn spawn(
+    pub fn spawn(
         &self,
         future: impl Future<Output = ()> + Send,
         nice: isize,
@@ -157,7 +158,7 @@ impl Executor {
     ) -> (Task, SchedTaskRef) {
         let mut active_tasks = global_state().active_tasks.write();
         let tid = active_tasks.next_vacant();
-        let run_queue = self.run_queue.lock();
+        let mut run_queue = self.run_queue.lock();
 
         let vruntime = match &extra_options {
             SpawnExtraOptions::None => run_queue.min_vruntime,
@@ -178,7 +179,7 @@ impl Executor {
 
         if SCHED_CHILD_RUNS_FIRST {
             if let SpawnExtraOptions::Fork { parent_sched_task } = extra_options {
-                let parent_task = parent_sched_task.lock();
+                let mut parent_task = parent_sched_task.lock();
                 if parent_task.vruntime < sched_task.vruntime {
                     mem::swap(&mut parent_task.vruntime, &mut sched_task.vruntime);
                     // TODO: is it possible that parent in rq already?
@@ -195,7 +196,8 @@ impl Executor {
             let _guard = CallOnDrop(move || {
                 let mut sched_task = sched_task.lock();
                 sched_task.ready_or_running = false;
-                let mut run_queue = sched_task.run_queue.lock();
+                let run_queue = sched_task.run_queue.clone();
+                let mut run_queue = run_queue.lock();
                 run_queue.remove_task(sched_task);
                 global_state().remove_task(tid);
             });
@@ -211,14 +213,17 @@ impl Executor {
         (task, sched_task)
     }
 
+    #[inline]
+    pub fn run(&self) {
+        loop {
+            self.tick();
+        }
+    }
+
     fn tick(&self) {
         let run_queue = self.run_queue.clone();
         loop {
-            let (tid, task, runnable) = run_queue.lock().pop_task_to_run();
-            {
-                let mut task = task.lock();
-                task.exec_start = arch::timer::read_ns() as usize;
-            }
+            let (_, task, runnable) = run_queue.lock().pop_task_to_run();
             let is_yielded = runnable.run();
             {
                 // if it not yielded then remove it.
@@ -276,7 +281,8 @@ impl RunQueue {
     fn insert_task(&mut self, tid: Tid, task: ReadyTask, load: LoadWeight) {
         if self
             .current_task
-            .map(|(curr_tid, _)| curr_tid != tid)
+            .as_ref()
+            .map(|(current_tid, _)| *current_tid != tid)
             .unwrap_or(true)
         {
             self.nr_running += 1;
@@ -286,13 +292,14 @@ impl RunQueue {
     }
 
     #[inline]
-    fn remove_task(&mut self, task: MutexGuard<SchedTask>) {
+    fn remove_task(&mut self, mut task: MutexGuard<SchedTask>) {
         task.ready_or_running = false;
         let contained = self.ready_tasks.remove(&task.tid).is_some();
         let contained = contained
             || self
                 .current_task
-                .map(|(current_tid, _)| current_tid == task.tid)
+                .as_ref()
+                .map(|(tid, _)| *tid == task.tid)
                 .unwrap_or(false);
         if contained {
             self.nr_running -= 1;
@@ -312,13 +319,11 @@ impl RunQueue {
         let next_tid = if self.nr_running < 2 {
             // TODO: pull from other cpu.
             *self.peek().0
-        } else if let Some((current_task_tid, current_task)) = self.current_task {
+        } else if let Some((current_task_tid, current_task)) = self.current_task.clone() {
             let current_task = current_task.lock();
             let ideal_runtime = self.sched_slice(&current_task);
             let delta_exec = current_task.sum_exec_runtime - current_task.prev_sum_exec_runtime;
-            let preempt_current = if !current_task.ready_or_running {
-                true
-            } else if delta_exec > ideal_runtime {
+            let preempt_current = if !current_task.ready_or_running || delta_exec > ideal_runtime {
                 true
                 // TODO: clear buddies
             } else if delta_exec < SCHED_MIN_GRANULARITY {
@@ -327,7 +332,7 @@ impl RunQueue {
                 // This also mitigates buddy induced latencies under load.
                 false
             } else {
-                let (next_tid, next_task) = self.peek();
+                let (_, next_task) = self.peek();
                 let delta = current_task.vruntime.delta(next_task.vruntime);
 
                 delta > ideal_runtime as isize
@@ -347,10 +352,13 @@ impl RunQueue {
         };
 
         let runnable = self.ready_tasks.remove(&next_tid).unwrap().1.runnable;
-        (next_tid, global_state().task(next_tid).unwrap(), runnable)
+        let task = global_state().task(next_tid).unwrap();
+        task.lock().exec_start = arch::timer::read_ns() as usize;
+
+        (next_tid, task, runnable)
     }
 
-    fn task_tick(&mut self, task: MutexGuard<SchedTask>) {
+    fn task_tick(&mut self, mut task: MutexGuard<SchedTask>) {
         task.tick();
         self.ready_tasks
             .change_priority_by(&task.tid, |t| t.vruntime = task.vruntime);
@@ -360,7 +368,7 @@ impl RunQueue {
 
     fn update_min_vruntime(&mut self) {
         let mut vruntime = self.min_vruntime;
-        if let Some((_, current_task)) = self.current_task {
+        if let Some((_, current_task)) = self.current_task.clone() {
             let current_task = current_task.lock();
             if current_task.ready_or_running {
                 vruntime = current_task.vruntime;
@@ -370,7 +378,7 @@ impl RunQueue {
             if self.current_task.is_none() {
                 vruntime = next.vruntime;
             } else {
-                vruntime.min(next.vruntime);
+                vruntime = vruntime.min(next.vruntime);
             }
         }
         // ensure we never gain time by being placed backwards.
@@ -378,10 +386,10 @@ impl RunQueue {
     }
 }
 
-struct SchedTask {
+pub struct SchedTask {
     tid: Tid,
     load: LoadWeight,
-    nice: isize,
+    pub nice: isize,
     ready_or_running: bool,
     run_queue: RunQueueRef,
 

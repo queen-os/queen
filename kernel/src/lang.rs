@@ -18,12 +18,12 @@ fn oom(_: core::alloc::Layout) -> ! {
 #[macro_export]
 #[allow(unused_unsafe)]
 macro_rules! symbol_addr {
-    ($symbol: expr) => {
+    ($symbol: ident) => {
         {
             let x: usize;
             #[allow(unused_unsafe)]
             unsafe {
-                asm!(concat!("adrp {}, ", $symbol), out(reg) x);
+                asm!(concat!("adrp {}, ", stringify!($symbol)), out(reg) x);
             }
             x
         }

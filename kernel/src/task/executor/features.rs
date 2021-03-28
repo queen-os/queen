@@ -38,7 +38,7 @@ impl Default for SchedFeatures {
 
 impl SchedFeatures {
     #[inline]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self::GENTLE_FAIR_SLEEPERS
             | Self::START_DEBIT
             | Self::LAST_BUDDY

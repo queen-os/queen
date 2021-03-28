@@ -42,7 +42,7 @@ pub fn init_other() {
 }
 
 fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
-    let page_start = (as_lower_range(symbol_addr!("_end")) - phys_mem_range.start) / PAGE_SIZE;
+    let page_start = (as_lower_range(symbol_addr!(_end)) - phys_mem_range.start) / PAGE_SIZE;
     let page_end = (phys_mem_range.len() - 1) / PAGE_SIZE + 1;
     FRAME_ALLOCATOR.lock().insert(page_start..page_end);
     info!("FrameAllocator init end");
@@ -53,37 +53,43 @@ fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     let offset = -(KERNEL_OFFSET as isize);
     let mut ms = MemorySet::new();
     ms.push(
-        symbol_addr!("stext"),
-        symbol_addr!("etext"),
+        symbol_addr!(stext),
+        symbol_addr!(etext),
         MemoryAttr::default().execute().readonly(),
         Linear::new(offset),
         "text",
     );
     ms.push(
-        symbol_addr!("sdata"),
-        symbol_addr!("edata"),
+        symbol_addr!(sdata),
+        symbol_addr!(edata),
         MemoryAttr::default(),
         Linear::new(offset),
         "data",
     );
     ms.push(
-        symbol_addr!("srodata"),
-        symbol_addr!("erodata"),
+        symbol_addr!(srodata),
+        symbol_addr!(erodata),
         MemoryAttr::default().readonly(),
         Linear::new(offset),
         "rodata",
     );
-
     ms.push(
-        symbol_addr!("sbss"),
-        symbol_addr!("ebss"),
+        symbol_addr!(sgot),
+        symbol_addr!(egot),
+        MemoryAttr::default(),
+        Linear::new(offset),
+        "got",
+    );
+    ms.push(
+        symbol_addr!(sbss),
+        symbol_addr!(ebss),
         MemoryAttr::default(),
         Linear::new(offset),
         "bss",
     );
     ms.push(
-        symbol_addr!("bootstack"),
-        symbol_addr!("bootstacktop"),
+        symbol_addr!(bootstack),
+        symbol_addr!(bootstacktop),
         MemoryAttr::default(),
         Linear::new(offset),
         "kstack",

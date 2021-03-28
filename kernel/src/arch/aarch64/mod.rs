@@ -36,6 +36,7 @@ unsafe extern "C" fn main_start() -> ! {
     buf.extend_from_slice(device_tree.device_tree().buf());
     let device_tree = drivers::DeviceTree::new(buf.as_slice()).unwrap();
 
+    crate::task::init(bsp::CPU_NUM);
     interrupt::init(device_tree);
 
     println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
@@ -56,7 +57,7 @@ fn async_test() {
     });
     task.detach();
 
-    GLOBAL_EXECUTOR.run();
+    local_executor().run();
 }
 
 #[no_mangle]
