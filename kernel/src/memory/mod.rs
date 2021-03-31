@@ -1,4 +1,4 @@
-use core::ptr::NonNull;
+use core::{mem::size_of, ptr::NonNull};
 
 use crate::consts::{KERNEL_HEAP_SIZE, KERNEL_OFFSET, MEMORY_OFFSET, PHYSICAL_MEMORY_OFFSET};
 use spin::Lazy;
@@ -71,11 +71,13 @@ pub fn dealloc_frames(target: PhysAddr, count: usize) {
 }
 
 pub fn init_heap() {
-    static mut HEAP: [u8; KERNEL_HEAP_SIZE] = [0; KERNEL_HEAP_SIZE];
+    const LEN: usize = KERNEL_HEAP_SIZE / size_of::<usize>();
+    static mut HEAP: [usize; LEN] = [0; LEN];
     unsafe {
-        HEAP_ALLOCATOR
-            .lock()
-            .init(NonNull::new_unchecked(HEAP.as_mut_ptr()), KERNEL_HEAP_SIZE);
+        HEAP_ALLOCATOR.lock().init(
+            NonNull::new_unchecked(HEAP.as_mut_ptr().cast()),
+            KERNEL_HEAP_SIZE,
+        );
     }
 }
 

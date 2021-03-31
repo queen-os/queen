@@ -28,7 +28,6 @@ dependencies = [
 [[package]]
 name = "allocators"
 version = "0.1.0"
-source = "git+https://github.com/songzhi/allocators#d8d23e306f0a7cc8e97e97a2e5f9d63fc5b6ca0f"
 dependencies = [
  "spin 0.7.0",
 ]

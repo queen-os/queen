@@ -13,7 +13,7 @@ bsp_virt = []
 
 [dependencies]
 aarch64 = { path = "../aarch64" }
-allocators = { git = "https://github.com/songzhi/allocators" }
+allocators = { path= "../allocators" }
 log = "0.4"
 spin = { version = "0.9", default-features = false, features = [
     "mutex",

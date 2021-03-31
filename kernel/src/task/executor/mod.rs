@@ -65,36 +65,37 @@ type ExecutorRef = Arc<Executor>;
 type RunQueueRef = Arc<MutexNoIrq<RunQueue>>;
 pub type SchedTaskRef = Arc<Mutex<SchedTask>>;
 
-static GLOBAL_STATE: Once<GlobalState> = Once::new();
+static GLOBAL_STATE: GlobalState = GlobalState::new();
 
 /// Must call this firstly.
 pub fn init(cpu_count: usize) {
-    GLOBAL_STATE.call_once(|| GlobalState::new(cpu_count));
+    GLOBAL_STATE
+        .executors
+        .call_once(|| (0..cpu_count).map(|_| Arc::new(Executor::new())).collect());
 }
 
-/// Must called after calling `init(cpu_count)`.
 #[inline]
 fn global_state() -> &'static GlobalState {
-    unsafe { GLOBAL_STATE.get_unchecked() }
+    &GLOBAL_STATE
 }
 
 /// Get the local executor for this CPU.
+/// Must call after called `init(cpu_count)`.
 #[inline]
 pub fn local_executor() -> ExecutorRef {
-    debug!("{}", global_state().executors.get(crate::cpu::id()).is_some());
-    global_state().executors[crate::cpu::id()].clone()
+    unsafe { global_state().executors.get_unchecked()[crate::cpu::id()].clone() }
 }
 
 struct GlobalState {
-    active_tasks: RwLock<Arena<SchedTaskRef>>,
-    executors: Vec<ExecutorRef>,
+    active_tasks: Lazy<RwLock<Arena<SchedTaskRef>>>,
+    executors: Once<Vec<ExecutorRef>>,
 }
 
 impl GlobalState {
-    fn new(cpu_count: usize) -> Self {
+    const fn new() -> Self {
         GlobalState {
-            active_tasks: Default::default(),
-            executors: vec![Arc::new(Executor::new()); cpu_count],
+            active_tasks: Lazy::new(Default::default),
+            executors: Once::new(),
         }
     }
 
@@ -165,7 +166,7 @@ impl Executor {
             SpawnExtraOptions::Fork { parent_sched_task } => parent_sched_task.lock().vruntime,
         };
 
-        let mut sched_task = SchedTask::new(tid, nice, true, self.run_queue.clone(), vruntime);
+        let mut sched_task = SchedTask::new(tid, nice, self.run_queue.clone(), vruntime);
 
         // The 'current' period is already promised to the current tasks,
         // however the extra weight of the new task will slow them down a
@@ -195,7 +196,7 @@ impl Executor {
             let sched_task = sched_task.clone();
             let _guard = CallOnDrop(move || {
                 let mut sched_task = sched_task.lock();
-                sched_task.ready_or_running = false;
+                sched_task.on_rq = false;
                 let run_queue = sched_task.run_queue.clone();
                 let mut run_queue = run_queue.lock();
                 run_queue.remove_task(sched_task);
@@ -209,6 +210,8 @@ impl Executor {
 
         active_tasks.insert(sched_task.clone());
         run_queue.insert_task(tid, ReadyTask::new(vruntime, runnable), load);
+        sched_task.lock().on_rq = true;
+        debug!("Task[{}] spawned", tid);
 
         (task, sched_task)
     }
@@ -223,15 +226,15 @@ impl Executor {
     fn tick(&self) {
         let run_queue = self.run_queue.clone();
         loop {
-            let (_, task, runnable) = run_queue.lock().pop_task_to_run();
+            let (tid, task, runnable) = run_queue.lock().pop_task_to_run();
+            debug!("Task[{}] run", tid);
             let is_yielded = runnable.run();
-            {
-                // if it not yielded then remove it.
-                if !is_yielded {
-                    run_queue.lock().remove_task(task.lock());
-                }
-                run_queue.lock().task_tick(task.lock());
+            let mut run_queue = run_queue.lock();
+            // if it not yielded then remove it.
+            if !is_yielded {
+                run_queue.remove_task(task.lock());
             }
+            run_queue.task_tick(task.lock());
         }
     }
 }
@@ -261,8 +264,8 @@ impl RunQueue {
     ///
     /// `s = p * P[w/rw]`
     fn sched_slice(&self, task: &SchedTask) -> usize {
-        let period = sched_period(self.nr_running + task.ready_or_running.not() as usize);
-        let load = if !task.ready_or_running {
+        let period = sched_period(self.nr_running + task.on_rq.not() as usize);
+        let load = if !task.on_rq {
             self.load + task.load
         } else {
             self.load
@@ -289,11 +292,13 @@ impl RunQueue {
             self.load += load;
         }
         self.ready_tasks.push(tid, task);
+
+        debug!("Task[{}] inserted", tid);
     }
 
     #[inline]
     fn remove_task(&mut self, mut task: MutexGuard<SchedTask>) {
-        task.ready_or_running = false;
+        task.on_rq = false;
         let contained = self.ready_tasks.remove(&task.tid).is_some();
         let contained = contained
             || self
@@ -302,6 +307,8 @@ impl RunQueue {
                 .map(|(tid, _)| *tid == task.tid)
                 .unwrap_or(false);
         if contained {
+            debug!("Task[{}] removed", task.tid);
+
             self.nr_running -= 1;
             self.load -= task.load;
             drop(task);
@@ -323,7 +330,7 @@ impl RunQueue {
             let current_task = current_task.lock();
             let ideal_runtime = self.sched_slice(&current_task);
             let delta_exec = current_task.sum_exec_runtime - current_task.prev_sum_exec_runtime;
-            let preempt_current = if !current_task.ready_or_running || delta_exec > ideal_runtime {
+            let preempt_current = if !current_task.on_rq || delta_exec > ideal_runtime {
                 true
                 // TODO: clear buddies
             } else if delta_exec < SCHED_MIN_GRANULARITY {
@@ -370,7 +377,7 @@ impl RunQueue {
         let mut vruntime = self.min_vruntime;
         if let Some((_, current_task)) = self.current_task.clone() {
             let current_task = current_task.lock();
-            if current_task.ready_or_running {
+            if current_task.on_rq {
                 vruntime = current_task.vruntime;
             }
         }
@@ -390,7 +397,7 @@ pub struct SchedTask {
     tid: Tid,
     load: LoadWeight,
     pub nice: isize,
-    ready_or_running: bool,
+    on_rq: bool,
     run_queue: RunQueueRef,
 
     exec_start: usize,
@@ -400,18 +407,12 @@ pub struct SchedTask {
 }
 
 impl SchedTask {
-    fn new(
-        tid: Tid,
-        nice: isize,
-        ready_or_running: bool,
-        run_queue: RunQueueRef,
-        vruntime: VRuntime,
-    ) -> Self {
+    fn new(tid: Tid, nice: isize, run_queue: RunQueueRef, vruntime: VRuntime) -> Self {
         SchedTask {
             tid,
             load: LoadWeight::new(nice_to_weight(nice)),
             nice,
-            ready_or_running,
+            on_rq: false,
             run_queue,
             exec_start: 0,
             sum_exec_runtime: 0,
@@ -433,7 +434,7 @@ impl SchedTask {
     fn schedule_fn(task: SchedTaskRef) -> impl Fn(Runnable) + Send + Sync + 'static {
         move |runnable: Runnable| {
             let mut task = task.lock();
-            task.ready_or_running = true;
+            task.on_rq = true;
 
             let thresh = if SCHED_FEAT.contains(SchedFeatures::GENTLE_FAIR_SLEEPERS) {
                 // Halve their sleep time's effect, to allow for a gentler effect of sleepers

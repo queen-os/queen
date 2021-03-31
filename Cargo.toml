@@ -1,5 +1,5 @@
 [workspace]
-members = ["aarch64", "kernel"]
+members = ["aarch64", "allocators", "kernel"]
 
 [profile.release]
 lto = true

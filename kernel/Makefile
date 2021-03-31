@@ -22,14 +22,11 @@ qemu_opts := \
 debug := 0
 LOG := info
 
-ifeq ($(mode), release)
+ifeq ($(mode), debug)
+qemu_opts += -s -S
+else
 build_args += --release
 endif
-
-ifeq ($(debug), 1)
-qemu_opts += -s -S
-endif
-
 
 .PHONY: run build justrun clean
 

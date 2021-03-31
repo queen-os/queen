@@ -76,6 +76,17 @@ pub unsafe extern "C" fn create_init_paging() {
 #[no_mangle]
 #[link_section = ".text.boot"]
 pub unsafe extern "C" fn enable_mmu() {
+    #[cfg(debug_assertions)]
+    {
+        // Set new stack pointer and link register.
+        let lr: usize;
+        asm!("mov {}, x30", out(reg) lr);
+        let new_lr = as_upper_range(lr) as u64;
+        let new_sp = as_upper_range(symbol_addr!(bootstacktop) - (cpuid() << 18)) as u64;
+        asm!("mov x17, {}", in(reg) new_sp, options(nostack));
+        asm!("mov x18, {}", in(reg) new_lr, options(nostack));
+    }
+
     MAIR_EL1.write(
         MAIR_EL1::Attr0.val(MairNormal::config_value())
             + MAIR_EL1::Attr1.val(MairDevice::config_value())
@@ -110,19 +121,43 @@ pub unsafe extern "C" fn enable_mmu() {
     translation::ttbr_el1_write(1, frame_lvl4);
     translation::local_invalidate_tlb_all();
 
-    // Set new stack pointer and link register.
-    SP.set(as_upper_range(symbol_addr!(bootstacktop) - (cpuid() << 18)) as u64);
-    LR.set(as_upper_range(LR.get() as usize) as u64);
+    #[cfg(not(debug_assertions))]
+    {
+        // Set new stack pointer and link register.
+        SP.set(as_upper_range(symbol_addr!(bootstacktop) - (cpuid() << 18)) as u64);
+        LR.set(as_upper_range(LR.get() as usize) as u64);
 
-    barrier::isb(barrier::SY);
-    // Enable the MMU and turn on data and instruction caching.
-    SCTLR_EL1.modify(SCTLR_EL1::M::Enable + SCTLR_EL1::C::Cacheable + SCTLR_EL1::I::Cacheable);
-    // Force MMU init to complete before next instruction
-    barrier::isb(barrier::SY);
+        barrier::isb(barrier::SY);
+        // Enable the MMU and turn on data and instruction caching.
+        SCTLR_EL1.modify(SCTLR_EL1::M::Enable + SCTLR_EL1::C::Cacheable + SCTLR_EL1::I::Cacheable);
+        // Force MMU init to complete before next instruction
+        barrier::isb(barrier::SY);
 
-    // Invalidate the local I-cache so that any instructions fetched
-    // speculatively from the PoC are discarded
-    cache::ICache::local_flush_all();
+        // Invalidate the local I-cache so that any instructions fetched
+        // speculatively from the PoC are discarded
+        cache::ICache::local_flush_all();
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        asm!("ISB SY", options(nostack));
+        // Enable the MMU and turn on data and instruction caching.
+        asm!(
+            "mrs     x8, sctlr_el1
+         mov     w9, #0x1005                     // #4101
+         orr     x8, x8, x9
+         msr     sctlr_el1, x8"
+        );
+        // Force MMU init to complete before next instruction
+        asm!("ISB SY", options(nostack));
+
+        // Invalidate the local I-cache so that any instructions fetched
+        // speculatively from the PoC are discarded
+        asm!("ic iallu; dsb nsh; isb");
+        asm!("mov sp, x17", options(nostack));
+        asm!("mov x30, x18", options(nostack));
+        asm!("ret", options(nostack));
+    }
 }
 
 #[no_mangle]

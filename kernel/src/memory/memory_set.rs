@@ -220,6 +220,9 @@ impl<T: PageTableExt> MemorySet<T> {
         handler: impl MemoryHandler,
         name: &'static str,
     ) {
+        if start_addr >= end_addr {
+            return;
+        }
         start_addr &= !(PAGE_SIZE - 1);
         end_addr = (end_addr + PAGE_SIZE - 1) & !(PAGE_SIZE - 1);
         assert!(start_addr < end_addr, "invalid memory area");

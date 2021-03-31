@@ -1,3 +1,9 @@
 [submodule "aarch64"]
 	path = aarch64
 	url = https://github.com/songzhi/aarch64
+[submodule "kernel/allocators"]
+	path = kernel/allocators
+	url = https://github.com/songzhi/allocators
+[submodule "allocators"]
+	path = allocators
+	url = https://github.com/songzhi/allocators
