@@ -192,17 +192,19 @@ impl Executor {
         let load = sched_task.load;
         let sched_task = Arc::new(Mutex::new(sched_task));
 
-        let future = async {
+        let future = {
             let sched_task = sched_task.clone();
-            let _guard = CallOnDrop(move || {
-                let mut sched_task = sched_task.lock();
-                sched_task.on_rq = false;
-                let run_queue = sched_task.run_queue.clone();
-                let mut run_queue = run_queue.lock();
-                run_queue.remove_task(sched_task);
-                global_state().remove_task(tid);
-            });
-            future.await
+            async move {
+                let _guard = CallOnDrop(move || {
+                    let mut sched_task = sched_task.lock();
+                    sched_task.on_rq = false;
+                    let run_queue = sched_task.run_queue.clone();
+                    let mut run_queue = run_queue.lock();
+                    run_queue.remove_task(sched_task);
+                    global_state().remove_task(tid);
+                });
+                future.await
+            }
         };
         let (runnable, task) = unsafe {
             async_task::spawn_unchecked(future, SchedTask::schedule_fn(sched_task.clone()))
@@ -211,7 +213,7 @@ impl Executor {
         active_tasks.insert(sched_task.clone());
         run_queue.insert_task(tid, ReadyTask::new(vruntime, runnable), load);
         sched_task.lock().on_rq = true;
-        debug!("Task[{}] spawned", tid);
+        trace!("Task[{}] spawned", tid);
 
         (task, sched_task)
     }
@@ -227,7 +229,7 @@ impl Executor {
         let run_queue = self.run_queue.clone();
         loop {
             let (tid, task, runnable) = run_queue.lock().pop_task_to_run();
-            debug!("Task[{}] run", tid);
+            trace!("Task[{}] run", tid);
             let is_yielded = runnable.run();
             let mut run_queue = run_queue.lock();
             // if it not yielded then remove it.
@@ -293,7 +295,7 @@ impl RunQueue {
         }
         self.ready_tasks.push(tid, task);
 
-        debug!("Task[{}] inserted", tid);
+        trace!("Task[{}] inserted", tid);
     }
 
     #[inline]
@@ -307,7 +309,7 @@ impl RunQueue {
                 .map(|(tid, _)| *tid == task.tid)
                 .unwrap_or(false);
         if contained {
-            debug!("Task[{}] removed", task.tid);
+            trace!("Task[{}] removed", task.tid);
 
             self.nr_running -= 1;
             self.load -= task.load;
@@ -745,8 +747,8 @@ const fn sched_period(nr_running: usize) -> usize {
 #[inline]
 async fn idle_task() {
     loop {
-        crate::cpu::halt();
         super::yield_now().await;
+        crate::cpu::halt();
     }
 }
 

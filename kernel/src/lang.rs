@@ -5,7 +5,7 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
     } else {
         println!("\nKernel panic!");
     }
-    crate::backtrace::backtrace();
+    // crate::backtrace::backtrace();
     crate::cpu::wait_forever();
 }
 
