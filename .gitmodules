@@ -7,3 +7,6 @@
 [submodule "allocators"]
 	path = allocators
 	url = https://github.com/songzhi/allocators
+[submodule "fs"]
+	path = fs
+	url = https://github.com/songzhi/queen-fs.git

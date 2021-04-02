@@ -13,7 +13,8 @@ bsp_virt = []
 
 [dependencies]
 aarch64 = { path = "../aarch64" }
-allocators = { path= "../allocators" }
+allocators = { path = "../allocators" }
+queen-fs = { path = "../fs" }
 log = "0.4"
 spin = { version = "0.9", default-features = false, features = [
     "mutex",
