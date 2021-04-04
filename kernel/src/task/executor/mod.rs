@@ -3,7 +3,7 @@ use crate::{
     sync::spin::{Mutex, MutexGuard, MutexNoIrq, RwLock},
 };
 use ahash::RandomState;
-use alloc::{sync::Arc, vec::Vec};
+use alloc::sync::Arc;
 use async_task::Runnable;
 use core::{
     cmp,
@@ -13,6 +13,7 @@ use core::{
     ops::{self, Not},
 };
 use priority_queue::PriorityQueue;
+use smallvec::SmallVec;
 use spin::{Lazy, Once};
 use vec_arena::Arena;
 
@@ -61,7 +62,7 @@ pub const MIN_NICE: isize = -20;
 /// SchedEntity ID
 type Tid = usize;
 type Task = async_task::Task<()>;
-type ExecutorRef = Arc<Executor>;
+type ExecutorVec = SmallVec<[Executor; 16]>;
 type RunQueueRef = Arc<MutexNoIrq<RunQueue>>;
 pub type SchedTaskRef = Arc<Mutex<SchedTask>>;
 
@@ -71,7 +72,7 @@ static GLOBAL_STATE: GlobalState = GlobalState::new();
 pub fn init(cpu_count: usize) {
     GLOBAL_STATE
         .executors
-        .call_once(|| (0..cpu_count).map(|_| Arc::new(Executor::new())).collect());
+        .call_once(|| (0..cpu_count).map(|_| Executor::new()).collect());
 }
 
 #[inline]
@@ -82,13 +83,13 @@ fn global_state() -> &'static GlobalState {
 /// Get the local executor for this CPU.
 /// Must call after called `init(cpu_count)`.
 #[inline]
-pub fn local_executor() -> ExecutorRef {
-    unsafe { global_state().executors.get_unchecked()[crate::cpu::id()].clone() }
+pub fn local_executor() -> &'static Executor {
+    global_state().executor(crate::cpu::id())
 }
 
 struct GlobalState {
     active_tasks: Lazy<RwLock<Arena<SchedTaskRef>>>,
-    executors: Once<Vec<ExecutorRef>>,
+    executors: Once<ExecutorVec>,
 }
 
 impl GlobalState {
@@ -105,9 +106,24 @@ impl GlobalState {
     }
 
     #[inline]
+    fn executor(&self, cpu_id: usize) -> &Executor {
+        unsafe { &self.executors.get_unchecked()[cpu_id] }
+    }
+
+    #[inline]
     fn remove_task(&self, tid: usize) -> Option<SchedTaskRef> {
         let mut tasks = self.active_tasks.write();
         tasks.remove(tid)
+    }
+
+    #[inline]
+    fn other_run_queues(&self, current_cpu_id: usize) -> SmallVec<[RunQueueRef; 16]> {
+        let executors = unsafe { self.executors.get_unchecked() };
+        let len = executors.len();
+        (current_cpu_id + 1..len)
+            .chain(0..current_cpu_id)
+            .map(|i| executors[i].run_queue.clone())
+            .collect()
     }
 }
 
@@ -325,8 +341,11 @@ impl RunQueue {
     }
 
     fn pop_task_to_run(&mut self) -> (Tid, SchedTaskRef, Runnable) {
+        if self.nr_running < 2 {
+            self.try_steal_tasks();
+        }
+
         let next_tid = if self.nr_running < 2 {
-            // TODO: pull from other cpu.
             *self.peek().0
         } else if let Some((current_task_tid, current_task)) = self.current_task.clone() {
             let current_task = current_task.lock();
@@ -392,6 +411,44 @@ impl RunQueue {
         }
         // ensure we never gain time by being placed backwards.
         self.min_vruntime = self.min_vruntime.max(vruntime);
+    }
+
+    #[inline]
+    fn is_current_task(&self, tid: Tid) -> bool {
+        self.current_task
+            .as_ref()
+            .map(|(current_tid, _)| *current_tid == tid)
+            .unwrap_or(false)
+    }
+
+    fn try_steal_tasks(&mut self) {
+        let other_run_queues = global_state().other_run_queues(crate::cpu::id());
+        let self_ref = global_state().executor(crate::cpu::id()).run_queue.clone();
+        if let Some(mut rq) = other_run_queues
+            .iter()
+            .find_map(|rq| rq.try_lock().filter(|rq| rq.nr_running > 2))
+        {
+            let mut count = rq.ready_tasks.len() / 2;
+            let mut task_to_push_back = None;
+            while count != 0 {
+                count -= 1;
+                let (tid, ready_task) = rq.ready_tasks.pop().unwrap();
+                if rq.is_current_task(tid) {
+                    task_to_push_back = Some((tid, ready_task));
+                    continue;
+                }
+                let task = global_state().task(tid).unwrap();
+                if let Some(mut task) = task.try_lock() {
+                    task.vruntime -= rq.min_vruntime;
+                    task.vruntime += self.min_vruntime;
+                    self.ready_tasks.push(tid, ready_task);
+                    task.run_queue = self_ref.clone();
+                };
+            }
+            if let Some((tid, task)) = task_to_push_back {
+                rq.ready_tasks.push(tid, task);
+            }
+        };
     }
 }
 
@@ -573,19 +630,19 @@ impl ops::Sub<usize> for VRuntime {
     }
 }
 
-// impl ops::Sub for VRuntime {
-//     type Output = Self;
+impl ops::Sub for VRuntime {
+    type Output = Self;
 
-//     fn sub(self, rhs: Self) -> Self::Output {
-//         VRuntime(self.0 - rhs.0)
-//     }
-// }
+    fn sub(self, rhs: Self) -> Self::Output {
+        VRuntime(self.0 - rhs.0)
+    }
+}
 
-// impl ops::SubAssign for VRuntime {
-//     fn sub_assign(&mut self, rhs: Self) {
-//         self.0 -= rhs.0;
-//     }
-// }
+impl ops::SubAssign for VRuntime {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.0 -= rhs.0;
+    }
+}
 
 impl ops::SubAssign<usize> for VRuntime {
     fn sub_assign(&mut self, rhs: usize) {
