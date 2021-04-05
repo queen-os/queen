@@ -429,12 +429,12 @@ impl RunQueue {
             .find_map(|rq| rq.try_lock().filter(|rq| rq.nr_running > 2))
         {
             let mut count = rq.ready_tasks.len() / 2;
-            let mut task_to_push_back = None;
+            let mut tasks_to_push_back = SmallVec::<[(Tid, ReadyTask); 32]>::new();
             while count != 0 {
                 count -= 1;
                 let (tid, ready_task) = rq.ready_tasks.pop().unwrap();
                 if rq.is_current_task(tid) {
-                    task_to_push_back = Some((tid, ready_task));
+                    tasks_to_push_back.push((tid, ready_task));
                     continue;
                 }
                 let task = global_state().task(tid).unwrap();
@@ -443,9 +443,11 @@ impl RunQueue {
                     task.vruntime += self.min_vruntime;
                     self.ready_tasks.push(tid, ready_task);
                     task.run_queue = self_ref.clone();
+                } else {
+                    tasks_to_push_back.push((tid, ready_task));
                 };
             }
-            if let Some((tid, task)) = task_to_push_back {
+            for (tid, task) in tasks_to_push_back {
                 rq.ready_tasks.push(tid, task);
             }
         };

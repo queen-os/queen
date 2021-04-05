@@ -9,9 +9,9 @@ pub use executor::{Executor, local_executor};
 pub use future::*;
 pub use timer::delay_for;
 
+#[inline]
 pub fn init(cpu_count: usize) {
     executor::init(cpu_count);
-    debug!("Task module init end");
 }
 
 #[inline]
