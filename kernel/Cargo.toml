@@ -32,3 +32,4 @@ ahash = { version = "0.7", default-features = false }
 bitflags = "1.2"
 vec-arena = "1.1"
 smallvec = "1.6"
+xmas-elf = "0.7"
