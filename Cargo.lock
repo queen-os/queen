@@ -29,7 +29,10 @@ dependencies = [
 name = "allocators"
 version = "0.1.0"
 dependencies = [
- "spin 0.7.0",
+ "bit_field",
+ "cache-padded",
+ "smallvec",
+ "spin",
 ]
 
 [[package]]
@@ -55,6 +58,12 @@ name = "bitflags"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+
+[[package]]
+name = "cache-padded"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
 
 [[package]]
 name = "cast"
@@ -258,7 +267,7 @@ dependencies = [
  "queen-fs",
  "register",
  "smallvec",
- "spin 0.9.0",
+ "spin",
  "vec-arena",
  "xmas-elf",
 ]
@@ -314,12 +323,6 @@ name = "smallvec"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
-
-[[package]]
-name = "spin"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "652ac3743312871a5fb703f0337e68ffa3cdc28c863efad0b8dc858fa10c991b"
 
 [[package]]
 name = "spin"
