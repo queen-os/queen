@@ -167,6 +167,6 @@ pub unsafe extern "C" fn clear_bss() {
     let end = symbol_addr!(ebss);
     let step = core::mem::size_of::<usize>();
     for i in (start..end).step_by(step) {
-        ptr::write_volatile(i as *mut usize, 0);
+        ptr::write(i as *mut usize, 0);
     }
 }
