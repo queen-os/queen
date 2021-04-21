@@ -7,3 +7,6 @@
 [submodule "fs"]
 	path = fs
 	url = https://github.com/songzhi/queen-fs.git
+[submodule "atomic-stamped-ptr"]
+	path = atomic-stamped-ptr
+	url = https://github.com/songzhi/atomic-stamped-ptr.git
