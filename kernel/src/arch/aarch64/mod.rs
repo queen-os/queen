@@ -51,8 +51,17 @@ fn async_test() {
 
     let task = spawn(async {
         loop {
-            println!("Hello from a kernel task!");
+            println!("Hello from kernel task[A]!");
             delay_for(Duration::from_secs(1)).await;
+        }
+    });
+    task.detach();
+
+    let task = spawn(async {
+        delay_for(Duration::from_millis(500)).await;
+        loop {
+            println!("Hello from kernel task[B]!");
+            delay_for(Duration::from_secs(2)).await;
         }
     });
     task.detach();
