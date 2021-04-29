@@ -1,6 +1,5 @@
 #![no_std]
 #![feature(lang_items)]
-#![feature(naked_functions)]
 #![feature(panic_info_message)]
 #![feature(global_asm)]
 #![feature(asm)]
@@ -11,6 +10,8 @@
 
 #[macro_use]
 extern crate alloc;
+#[macro_use]
+extern crate num_derive;
 #[macro_use]
 extern crate log;
 
@@ -29,6 +30,7 @@ pub mod memory;
 pub mod process;
 pub mod sync;
 pub mod task;
+pub mod syscall;
 
 pub use arch::cpu;
 

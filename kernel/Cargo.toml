@@ -26,6 +26,8 @@ spin = { version = "0.9", default-features = false, features = [
 register = { version = "1.0", features = ["no_std_unit_tests"] }
 fdt-rs = { version = "0.4", default-features = false }
 num_enum = { version = "0.5", default-features = false }
+num-traits = { version = "0.2", default-features = false }
+num-derive = "0.3"
 async-task = { version = "4.0", default-features = false }
 priority-queue = "1.1"
 ahash = { version = "0.7", default-features = false }

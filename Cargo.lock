@@ -577,6 +577,8 @@ dependencies = [
  "bitflags",
  "fdt-rs",
  "log",
+ "num-derive",
+ "num-traits",
  "num_enum",
  "priority-queue",
  "queen-fs",
