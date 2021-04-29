@@ -2,11 +2,15 @@ use super::*;
 use alloc::boxed::Box;
 use core::fmt::Debug;
 
+mod byframe;
+mod delay;
+pub mod file;
 mod linear;
-mod file;
 
-pub use linear::Linear;
+pub use byframe::ByFrame;
+pub use delay::Delay;
 pub use file::File;
+pub use linear::Linear;
 
 pub trait MemoryHandler: Debug + Send + Sync + 'static {
     fn box_clone(&self) -> Box<dyn MemoryHandler>;
