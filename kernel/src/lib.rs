@@ -31,6 +31,7 @@ pub mod process;
 pub mod sync;
 pub mod task;
 pub mod syscall;
+pub mod signal;
 
 pub use arch::cpu;
 
