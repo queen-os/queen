@@ -72,10 +72,10 @@ impl MemoryArea {
 /// The attributes of the memory
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct MemoryAttr {
-    user: bool,
-    readonly: bool,
-    execute: bool,
-    mmio: u8,
+    pub user: bool,
+    pub readonly: bool,
+    pub execute: bool,
+    pub mmio: u8,
 }
 
 impl MemoryAttr {

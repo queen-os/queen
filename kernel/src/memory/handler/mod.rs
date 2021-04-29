@@ -3,8 +3,10 @@ use alloc::boxed::Box;
 use core::fmt::Debug;
 
 mod linear;
+mod file;
 
 pub use linear::Linear;
+pub use file::File;
 
 pub trait MemoryHandler: Debug + Send + Sync + 'static {
     fn box_clone(&self) -> Box<dyn MemoryHandler>;

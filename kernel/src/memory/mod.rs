@@ -1,4 +1,4 @@
-use core::{mem::size_of, ptr::NonNull};
+use core::{fmt::Debug, mem::size_of, ptr::NonNull};
 
 use crate::consts::{KERNEL_HEAP_SIZE, KERNEL_OFFSET, MEMORY_OFFSET, PHYSICAL_MEMORY_OFFSET};
 use spin::Lazy;
@@ -54,20 +54,42 @@ pub const fn as_upper_range(addr: VirtAddr) -> VirtAddr {
     addr | KERNEL_OFFSET
 }
 
-pub fn alloc_frames(count: usize) -> Option<PhysAddr> {
-    // get the real address of the alloc frame
-    FRAME_ALLOCATOR.lock().alloc(count).map(|id| {
-        let frame = id * PAGE_SIZE + MEMORY_OFFSET;
-        trace!("Allocate frame: {:x?}", frame);
-        frame
-    })
+pub trait FrameAllocator: Debug + Clone + Send + Sync + 'static {
+    /// Allocate a range of frames from the allocator, return the first frame of the allocated range.
+    fn alloc(&self, count: usize) -> Option<usize>;
+    /// Deallocate a range of frames [frame, frame+count) from the frame allocator.
+    fn dealloc(&self, frame: usize, count: usize);
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct GlobalFrameAlloc;
+
+impl FrameAllocator for GlobalFrameAlloc {
+    fn alloc(&self, count: usize) -> Option<usize> {
+        // get the real address of the alloc frame
+        FRAME_ALLOCATOR.lock().alloc(count).map(|id| {
+            let frame = id * PAGE_SIZE + MEMORY_OFFSET;
+            trace!("Allocate frame: {:x?}", frame);
+            frame
+        })
+    }
+
+    fn dealloc(&self, target: usize, count: usize) {
+        trace!("Deallocate frame: {:x?}", target);
+        FRAME_ALLOCATOR
+            .lock()
+            .dealloc((target / PAGE_SIZE) as usize, count);
+    }
+}
+
+#[inline]
+pub fn alloc_frames(count: usize) -> Option<PhysAddr> {
+    GlobalFrameAlloc.alloc(count)
+}
+
+#[inline]
 pub fn dealloc_frames(target: PhysAddr, count: usize) {
-    trace!("Deallocate frame: {:x}", target);
-    FRAME_ALLOCATOR
-        .lock()
-        .dealloc((target / PAGE_SIZE) as usize, count);
+    GlobalFrameAlloc.dealloc(target, count)
 }
 
 pub fn init_heap() {
