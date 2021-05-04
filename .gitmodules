@@ -10,3 +10,6 @@
 [submodule "atomic-stamped-ptr"]
 	path = atomic-stamped-ptr
 	url = https://github.com/songzhi/atomic-stamped-ptr.git
+[submodule "shell"]
+	path = shell
+	url = https://github.com/songzhi/queen-shell.git

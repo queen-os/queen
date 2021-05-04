@@ -14,6 +14,7 @@ pub mod cpu;
 pub mod interrupt;
 pub mod memory;
 pub mod paging;
+pub mod signal;
 pub mod syscall;
 pub mod timer;
 

@@ -100,7 +100,7 @@ pub fn send_signal(process: Arc<MutexNoIrq<Process>>, tid: isize, info: Siginfo)
     }
     process.sig_queue.push_back((info, tid));
     process.pending_sigset.add(signal);
-    process.eventbus.lock().set(Event::RECEIVE_SIGNAL);
+    process.event_bus.lock().set(Event::RECEIVE_SIGNAL);
     info!(
         "send signal {} to pid {} tid {}",
         info.signo, process.pid, tid

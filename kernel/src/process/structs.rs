@@ -1,38 +1,9 @@
-use super::abi::{self, ProcInitInfo};
-use crate::{
-    arch::paging::*,
-    fs::{FileHandle, FileLike, OpenOptions, FOLLOW_MAX_DEPTH},
-    ipc::SemProc,
-    memory::{
-        phys_to_virt, ByFrame, Delay, File, GlobalFrameAlloc, KernelStack, MemoryAttr, MemorySet,
-        Read,
-    },
-    syscall::handle_syscall,
-};
-use aarch64::trap::{TrapFrame, UserContext};
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, VecDeque},
-    string::String,
-    sync::{Arc, Weak},
-    vec::Vec,
-};
-use bitflags::_core::cell::Ref;
-use core::{
-    fmt,
-    future::Future,
-    mem::MaybeUninit,
-    pin::Pin,
-    str,
-    task::{Context, Poll},
-};
+use crate::memory::{handler, GlobalFrameAlloc, MemoryAttr, MemorySet, Page, PAGE_SIZE};
+use alloc::sync::Arc;
+use core::str;
 use log::*;
-use pc_keyboard::KeyCode::BackTick;
 use queen_fs::vfs::INode;
-use rcore_memory::{Page, PAGE_SIZE};
-use spin::RwLock;
 use xmas_elf::{
-    header,
     program::{Flags, SegmentData, Type},
     ElfFile,
 };
@@ -87,7 +58,7 @@ impl ElfExt for ElfFile<'_> {
                 ph.virtual_addr() as usize,
                 ph.virtual_addr() as usize + ph.mem_size() as usize,
                 ph.flags().to_attr(),
-                File {
+                handler::File {
                     file: INodeForMap(inode.clone()),
                     mem_start: ph.virtual_addr() as usize,
                     file_start: ph.offset() as usize,
@@ -103,6 +74,7 @@ impl ElfExt for ElfFile<'_> {
 
         Page::of_addr(farthest_memory + PAGE_SIZE).start_address()
     }
+
     fn append_as_interpreter(&self, inode: &Arc<dyn INode>, ms: &mut MemorySet, bias: usize) {
         debug!("inserting interpreter from ELF");
 
@@ -114,7 +86,7 @@ impl ElfExt for ElfFile<'_> {
                 ph.virtual_addr() as usize + bias,
                 ph.virtual_addr() as usize + ph.mem_size() as usize + bias,
                 ph.flags().to_attr(),
-                File {
+                handler::File {
                     file: INodeForMap(inode.clone()),
                     mem_start: ph.virtual_addr() as usize + bias,
                     file_start: ph.offset() as usize,
@@ -125,6 +97,7 @@ impl ElfExt for ElfFile<'_> {
             )
         }
     }
+
     fn get_interpreter(&self) -> Result<&str, &str> {
         let header = self
             .program_iter()
@@ -166,7 +139,7 @@ impl ElfExt for ElfFile<'_> {
 #[derive(Clone)]
 pub struct INodeForMap(pub Arc<dyn INode>);
 
-impl Read for INodeForMap {
+impl handler::file::Read for INodeForMap {
     fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
         self.0.read_at(offset, buf).unwrap()
     }
