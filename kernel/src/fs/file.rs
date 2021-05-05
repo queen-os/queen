@@ -172,7 +172,7 @@ impl FileHandle {
         if !description.options.read {
             return Err(FsError::InvalidParam); // TODO: => EBADF
         }
-        let mut offset = &mut description.offset;
+        let offset = &mut description.offset;
         let name = self.inode.get_entry(*offset as usize)?;
         *offset += 1;
         Ok(name)
@@ -183,7 +183,7 @@ impl FileHandle {
         if !description.options.read {
             return Err(FsError::InvalidParam); // TODO: => EBADF
         }
-        let mut offset = &mut description.offset;
+        let offset = &mut description.offset;
         let ret = self.inode.get_entry_with_metadata(*offset as usize)?;
         *offset += 1;
         Ok(ret)

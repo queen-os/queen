@@ -27,19 +27,6 @@ pub type Pgid = i32;
 pub type ProcessRef = Arc<MutexNoIrq<Process>>;
 pub const PID_INIT: usize = 1;
 pub static PROCESSES: RwLock<BTreeMap<Pid, ProcessRef>> = RwLock::new(BTreeMap::new());
-static mut PROCESSORS: [Option<Arc<Thread>>; MAX_CPU_NUM] = [None; MAX_CPU_NUM];
-
-/// Get current thread
-///
-/// `Thread` is a thread-local object.
-/// It is safe to call this once, and pass `&mut Thread` as a function argument.
-///
-/// Don't use it unless necessary.
-#[inline]
-pub fn current_thread() -> Option<Arc<Thread>> {
-    let cpu_id = crate::cpu::id();
-    unsafe { PROCESSORS[cpu_id].clone() }
-}
 
 pub struct Process {
     /// Virtual memory
@@ -59,6 +46,7 @@ pub struct Process {
 
     // /// Semaphore
     // pub semaphores: SemProc,
+
     /// Pid i.e. tgid, usually the tid of first thread
     pub pid: Pid,
 

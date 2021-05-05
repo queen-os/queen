@@ -492,7 +492,7 @@ impl Thread {
             vmtoken,
             thread: self.clone()
         }, 0, executor::SpawnExtraOptions::None);
-        thread.inner.lock().task = Some((task, sched_task));
+        self.inner.lock().task = Some((task, sched_task));
     }
 }
 
@@ -506,17 +506,9 @@ struct PageTableSwitchWrapper {
 impl Future for PageTableSwitchWrapper {
     type Output = ();
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        // set cpu local thread
-        let cpu_id = crate::cpu::id();
-        unsafe {
-            super::PROCESSORS[cpu_id] = Some(self.thread.clone());
-        }
         // vmtoken won't change
         set_page_table(self.vmtoken);
         let res = self.inner.lock().as_mut().poll(cx);
-        unsafe {
-            super::PROCESSORS[cpu_id] = None;
-        }
         res
     }
 }

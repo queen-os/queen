@@ -14,12 +14,12 @@ kernel_image := kernel + ".bin"
 smp := "4"
 qemu_opts := (
       "-M " + board
-    + "-m 1G"
-    + "-cpu " + target_cpu
-    + "-smp " + smp
-    + "-serial stdio -display none"
-    + "-kernel" + kernel_image
-    + if mode == "debug" { "-s -S" } else {""}
+    + " -m 1G"
+    + " -cpu " + target_cpu
+    + " -smp " + smp
+    + " -serial stdio -display none"
+    + " -kernel " + kernel_image
+    + if mode == "debug" { " -s -S" } else {""}
 )
 
 run: image justrun
