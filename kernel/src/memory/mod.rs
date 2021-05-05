@@ -101,6 +101,7 @@ pub fn init_heap() {
             KERNEL_HEAP_SIZE,
         );
     }
+    info!("Initialized heap allocator.");
 }
 
 /// Handle page fault at `addr`.

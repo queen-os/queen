@@ -4,7 +4,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-use crate::{drivers, memory::phys_to_virt};
+use crate::{drivers, memory::phys_to_virt, consts::QUEEN_OS};
 
 mod boot;
 #[cfg_attr(feature = "bsp_virt", path = "bsp/virt/mod.rs")]
@@ -28,6 +28,7 @@ unsafe extern "C" fn main_start() -> ! {
     crate::logging::init();
 
     let device_tree = drivers::DeviceTree::from_raw(device_tree_addr).unwrap();
+    log_system_info(&device_tree);
     memory::init(memory::MemInitOpts::new(
         device_tree.probe_memory().unwrap(),
     ));
@@ -40,8 +41,7 @@ unsafe extern "C" fn main_start() -> ! {
     crate::task::init(bsp::CPU_NUM);
     interrupt::init(device_tree);
 
-    println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
-    async_test();
+    // async_test();
     AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();
 }
@@ -72,11 +72,18 @@ fn async_test() {
 
 #[no_mangle]
 unsafe extern "C" fn others_start() -> ! {
-    println!("Hello {}! from CPU {}", bsp::BOARD_NAME, cpu::id());
     while !AP_CAN_INIT.load(Ordering::Acquire) {
         spin_loop()
     }
     memory::init_other();
     interrupt::init_other();
     crate::kmain();
+}
+
+#[inline]
+fn log_system_info(device_tree: &drivers::DeviceTree)  {
+    println!("{}", QUEEN_OS);
+    info!("CPU numbers: {}.", 4);
+    let memory = device_tree.probe_memory().unwrap();
+    info!("Physical memory: 0x{:x}-0x{:x}.", memory.start, memory.end);
 }

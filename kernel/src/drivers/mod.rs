@@ -7,6 +7,8 @@ pub mod irq;
 pub mod rtc;
 pub mod serial;
 
+use core::fmt::Display;
+
 pub use device_tree::DeviceTree;
 pub use irq::IrqManager;
 pub use rtc::RtcDriver;
@@ -28,6 +30,28 @@ pub enum DeviceType {
     /// Interrupt controller
     Intc,
     Timer,
+}
+
+impl DeviceType {
+    #[inline]
+    fn description(&self) -> &'static str {
+        match self {
+            DeviceType::Net => "Net",
+            DeviceType::Gpu => "GPU",
+            DeviceType::Input => "Input",
+            DeviceType::Block => "Block",
+            DeviceType::Rtc => "RTC",
+            DeviceType::Serial => "Serial",
+            DeviceType::Intc => "Interrupt Controller",
+            DeviceType::Timer => "Timer",
+        }
+    }
+}
+
+impl Display for DeviceType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.description())
+    }
 }
 
 pub trait Driver: Send + Sync {

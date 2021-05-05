@@ -269,7 +269,6 @@ impl PageTableImpl {
     /// Map physical memory [start, end)
     /// to virtual space [phys_to_virt(start), phys_to_virt(end))
     pub fn map_physical_memory(&mut self, start: usize, end: usize) {
-        info!("mapping physical memory");
         let aligned_start = align_down(start as u64, ALIGN_2MIB);
         let aligned_end = align_up(end as u64, ALIGN_2MIB);
         let flags = EF::default_block() | EF::UXN | EF::PXN;
@@ -285,6 +284,13 @@ impl PageTableImpl {
                     .flush();
             }
         }
+        info!(
+            "Mapped physical memory from 0x{:X}-0x{:X} to 0x{:X}-0x{:X}.",
+            start,
+            end,
+            phys_to_virt(start),
+            phys_to_virt(end)
+        );
     }
 }
 

@@ -32,7 +32,6 @@ pub fn init(opts: MemInitOpts) {
     init_heap();
     init_frame_allocator(&opts);
     map_kernel(&opts);
-    info!("memory: init end");
 }
 
 pub fn init_other() {
@@ -45,7 +44,7 @@ fn init_frame_allocator(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     let page_start = (as_lower_range(symbol_addr!(_end)) - phys_mem_range.start) / PAGE_SIZE;
     let page_end = (phys_mem_range.len() - 1) / PAGE_SIZE + 1;
     FRAME_ALLOCATOR.lock().insert(page_start..page_end);
-    info!("FrameAllocator init end");
+    info!("Initialized frame allocator.");
 }
 
 /// Create fine-grained mappings for the kernel
@@ -107,7 +106,7 @@ fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     unsafe { page_table.activate_as_kernel() };
     *KERNEL_MEMORY_SET.lock() = Some(ms);
 
-    info!("map kernel end");
+    info!("Mapped kernel image to 0x{:X}-0x{:X}.", symbol_addr!(stext), symbol_addr!(_end));
 }
 
 /// map the I/O memory range into the kernel page table

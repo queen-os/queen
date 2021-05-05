@@ -69,6 +69,7 @@ impl IrqManager for GicV2 {
         irq_num: usize,
         driver: Arc<dyn Driver>,
     ) -> drivers::Result<()> {
+        info!("Enabled IRQ[{}] Device[{}; {}].", irq_num, driver.device_type(), driver.compatible());
         let mut map = self.irq_map.lock();
         map.entry(irq_num).or_insert_with(Vec::new).push(driver);
         self.gicd.enable(irq_num);
@@ -111,6 +112,8 @@ pub fn driver_init(device_tree: drivers::DeviceTree) -> Option<GicV2> {
 
     let gic = unsafe { GicV2::new(gicd_mmio_start_addr, gicc_mmio_start_addr) };
     gic.init().unwrap();
+
+    info!("Initialized GICv2 interrupt controller.");
 
     Some(gic)
 }

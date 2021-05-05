@@ -36,6 +36,7 @@ pub mod signal;
 pub use arch::cpu;
 
 pub fn kmain() -> ! {
+    info!("Kernel running.");
     loop {
         cpu::halt();
     }

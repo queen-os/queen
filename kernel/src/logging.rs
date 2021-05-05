@@ -83,7 +83,7 @@ impl Log for SimpleLogger {
         }
         print_with_color(
             format_args!(
-                "[{:>5}][CPU-{}]: {}\n",
+                "[{:<5}][CPU-{}]: {}\n",
                 record.level(),
                 crate::arch::cpu::id(),
                 record.args()
