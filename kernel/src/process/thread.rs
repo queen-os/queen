@@ -1,16 +1,26 @@
-use super::{abi, add_to_process_table, structs::ElfExt, Pid, Process, PID_INIT};
+use super::{abi, add_to_process_table, structs::ElfExt, Process, PID_INIT};
 use crate::{
+    arch::{
+        interrupt::{
+            consts::{is_irq, is_page_fault, is_syscall},
+            IRQ_MANAGER,
+        },
+        memory::{get_page_fault_addr, set_page_table},
+    },
+    drivers::IrqManager,
     fs::{FileHandle, OpenOptions, FOLLOW_MAX_DEPTH, ROOT_INODE},
     memory::{
         handler::{ByFrame, Delay},
         GlobalFrameAlloc, MemoryAttr, MemorySet, PAGE_SIZE,
     },
     process::abi::ProcInitInfo,
-    signal::{Signal, SignalAction, SignalStack, Sigset},
+    signal::{handle_signal, Signal, SignalAction, SignalStack, Sigset},
     sync::{
         spin::{MutexNoIrq, RwLock},
         EventBus,
     },
+    syscall::handle_syscall,
+    task::{yield_now, SchedTaskRef, Task, executor},
 };
 use aarch64::trap::UserContext;
 use alloc::{
@@ -20,19 +30,15 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use num_traits::FromPrimitive;
 use core::{
     future::Future,
     mem::MaybeUninit,
     pin::Pin,
     task::{Context, Poll},
 };
+use num_traits::FromPrimitive;
 use queen_fs::INode;
-use xmas_elf::{
-    header,
-    program::{Flags, SegmentData, Type},
-    ElfFile,
-};
+use xmas_elf::{header, ElfFile};
 
 pub type Tid = usize;
 pub type ThreadRef = Arc<Thread>;
@@ -40,8 +46,9 @@ pub static THREADS: RwLock<BTreeMap<Tid, ThreadRef>> = RwLock::new(BTreeMap::new
 
 /// Mutable part of a thread struct
 #[derive(Default)]
-struct ThreadInner {
+pub struct ThreadInner {
     context: Option<UserContext>,
+    task: Option<(Task, SchedTaskRef)>,
     /// Kernel performs futex wake when thread exits.
     /// Ref: [http://man7.org/linux/man-pages/man2/set_tid_address.2.html]
     pub clear_child_tid: usize,
@@ -259,6 +266,7 @@ impl Thread {
         let thread = Thread {
             inner: MutexNoIrq::new(ThreadInner {
                 context: Some(context),
+                task: None,
                 clear_child_tid: 0,
                 sig_mask: Sigset::default(),
                 signal_alternate_stack: SignalStack::default(),
@@ -333,6 +341,7 @@ impl Thread {
             tid: 0, // allocated below
             inner: MutexNoIrq::new(ThreadInner {
                 context: Some(context),
+                task: None,
                 clear_child_tid: 0,
                 sig_mask,
                 signal_alternate_stack: sigaltstack,
@@ -375,8 +384,9 @@ impl Thread {
         let thread = Thread {
             tid: 0,
             inner: MutexNoIrq::new(ThreadInner {
-                clear_child_tid,
                 context: Some(thread_context),
+                task: None,
+                clear_child_tid,
                 sig_mask,
                 signal_alternate_stack: signal_stack,
             }),
@@ -413,5 +423,100 @@ impl Thread {
                         .contains(FromPrimitive::from_i32(info.signo).unwrap())
             })
             .is_some()
+    }
+
+    pub fn spawn(self: &Arc<Self>) {
+        let vmtoken = self.vm.lock().token() as usize;
+        let thread = self.clone();
+        let future = async move {
+            loop {
+                let mut thread_context = thread.begin_running();
+                trace!("go to user: {:#x?}", thread_context);
+                thread_context.run();
+
+                let trap_num = thread_context.trap_num;
+                trace!(
+                    "back from user: {:#x?} trap_num {:#x}",
+                    thread_context,
+                    trap_num
+                );
+
+                let mut exit = false;
+                let mut do_yield = false;
+
+                match trap_num {
+                    // must be first
+                    _ if is_page_fault(trap_num) => {
+                        // page fault
+                        let addr = get_page_fault_addr();
+                        trace!("page fault from user @ {:#x}", addr);
+
+                        if !thread.vm.lock().handle_page_fault(addr) {
+                            // TODO: SIGSEGV
+                            panic!("page fault handle failed");
+                        }
+                    }
+                    _ if is_syscall(trap_num) => {
+                        exit = handle_syscall(&thread, &mut thread_context).await
+                    }
+                    _ if is_irq(trap_num) => {
+                        trace!("handle irq {:#x}", trap_num);
+                        IRQ_MANAGER.get().unwrap().handle_pending_irqs();
+                        do_yield = true;
+                    }
+                    _ => {
+                        panic!(
+                            "unhandled trap in thread {} trap {:#x} {:x?}",
+                            thread.tid, trap_num, thread_context
+                        );
+                    }
+                }
+
+                // check signals
+                if !exit {
+                    exit = handle_signal(&thread, &mut thread_context);
+                }
+
+                thread.end_running(thread_context);
+                if exit {
+                    info!("thread {} stopped", thread.tid);
+                    break;
+                } else if do_yield {
+                    yield_now().await;
+                }
+            }
+        };
+
+        let (task, sched_task) = executor::local_executor().spawn(PageTableSwitchWrapper {
+            inner: MutexNoIrq::new(Box::pin(future)),
+            vmtoken,
+            thread: self.clone()
+        }, 0, executor::SpawnExtraOptions::None);
+        thread.inner.lock().task = Some((task, sched_task));
+    }
+}
+
+#[must_use = "future does nothing unless polled/`await`-ed"]
+struct PageTableSwitchWrapper {
+    inner: MutexNoIrq<Pin<Box<dyn Future<Output = ()> + Send>>>,
+    vmtoken: usize,
+    thread: Arc<Thread>,
+}
+
+impl Future for PageTableSwitchWrapper {
+    type Output = ();
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        // set cpu local thread
+        let cpu_id = crate::cpu::id();
+        unsafe {
+            super::PROCESSORS[cpu_id] = Some(self.thread.clone());
+        }
+        // vmtoken won't change
+        set_page_table(self.vmtoken);
+        let res = self.inner.lock().as_mut().poll(cx);
+        unsafe {
+            super::PROCESSORS[cpu_id] = None;
+        }
+        res
     }
 }

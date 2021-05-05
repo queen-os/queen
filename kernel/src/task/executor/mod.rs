@@ -61,7 +61,7 @@ pub const MIN_NICE: isize = -20;
 
 /// SchedEntity ID
 type Tid = usize;
-type Task = async_task::Task<()>;
+pub type Task = async_task::Task<()>;
 type ExecutorVec = SmallVec<[Executor; 16]>;
 type RunQueueRef = Arc<MutexNoIrq<RunQueue>>;
 pub type SchedTaskRef = Arc<Mutex<SchedTask>>;

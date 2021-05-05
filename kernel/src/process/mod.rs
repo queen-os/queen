@@ -1,4 +1,6 @@
+use self::thread::{Tid, THREADS};
 use crate::{
+    consts::MAX_CPU_NUM,
     fs::FileHandle,
     memory::MemorySet,
     signal::{Siginfo, Signal, SignalAction, Sigset},
@@ -18,8 +20,6 @@ pub mod thread;
 
 pub use thread::Thread;
 
-use self::thread::{Tid, THREADS};
-
 /// Process ID type
 pub type Pid = usize;
 /// process group id type
@@ -27,6 +27,19 @@ pub type Pgid = i32;
 pub type ProcessRef = Arc<MutexNoIrq<Process>>;
 pub const PID_INIT: usize = 1;
 pub static PROCESSES: RwLock<BTreeMap<Pid, ProcessRef>> = RwLock::new(BTreeMap::new());
+static mut PROCESSORS: [Option<Arc<Thread>>; MAX_CPU_NUM] = [None; MAX_CPU_NUM];
+
+/// Get current thread
+///
+/// `Thread` is a thread-local object.
+/// It is safe to call this once, and pass `&mut Thread` as a function argument.
+///
+/// Don't use it unless necessary.
+#[inline]
+pub fn current_thread() -> Option<Arc<Thread>> {
+    let cpu_id = crate::cpu::id();
+    unsafe { PROCESSORS[cpu_id].clone() }
+}
 
 pub struct Process {
     /// Virtual memory
@@ -155,7 +168,11 @@ impl Process {
         // notify parent and fill exit code
         self.event_bus.lock().set(Event::PROCESS_QUIT);
         if let Some(parent) = self.parent.1.upgrade() {
-            parent.lock().event_bus.lock().set(Event::CHILD_PROCESS_QUIT);
+            parent
+                .lock()
+                .event_bus
+                .lock()
+                .set(Event::CHILD_PROCESS_QUIT);
         }
         self.exit_code = exit_code;
 

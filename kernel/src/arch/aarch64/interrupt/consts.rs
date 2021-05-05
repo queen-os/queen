@@ -21,3 +21,20 @@ pub fn is_page_fault(trap: usize) -> bool {
         _ => false,
     }
 }
+
+// from el0, irq
+pub const IrqMax: usize = 0x10002;
+pub const IrqMin: usize = 0x10002;
+
+// from el0, sync
+pub const Syscall: usize = 0x00002;
+
+#[inline]
+pub fn is_syscall(trap: usize) -> bool {
+    trap == Syscall
+}
+
+#[inline]
+pub fn is_irq(trap: usize) -> bool {
+    IrqMin <= trap && trap <= IrqMax
+}
