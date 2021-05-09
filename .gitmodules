@@ -13,3 +13,6 @@
 [submodule "shell"]
 	path = shell
 	url = https://github.com/songzhi/queen-shell.git
+[submodule "syscall"]
+	path = syscall
+	url = https://github.com/songzhi/queen-syscall.git

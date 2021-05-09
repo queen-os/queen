@@ -34,6 +34,7 @@ pub mod syscall;
 pub mod signal;
 
 pub use arch::cpu;
+pub use queen_syscall::TimeSpec;
 
 pub fn kmain() -> ! {
     info!("Kernel running.");

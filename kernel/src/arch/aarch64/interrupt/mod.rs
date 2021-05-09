@@ -2,8 +2,9 @@
 
 pub use self::handler::*;
 
-use crate::drivers::{self, irq::GicV2, DeviceTree, Driver};
+use crate::drivers::{self, irq::GicV2, rtc::Pl031Rtc, DeviceTree, Driver};
 use aarch64::registers::*;
+use alloc::sync::Arc;
 use spin::Once;
 
 pub mod consts;
@@ -63,12 +64,13 @@ pub fn init(device_tree: DeviceTree) {
 
     let irq_manager = drivers::irq::gicv2::driver_init(device_tree).unwrap();
     irq_manager.init().unwrap();
+    IRQ_MANAGER.call_once(|| irq_manager);
 
     crate::arch::timer::driver_init(device_tree, &irq_manager);
-    drivers::serial::pl011_uart::driver_init(device_tree, &irq_manager);
-    drivers::rtc::pl031::driver_init(device_tree, &irq_manager);
 
-    IRQ_MANAGER.call_once(|| irq_manager);
+    drivers::serial::pl011_uart::driver_init(device_tree, &irq_manager);
+
+    drivers::rtc::pl031::driver_init(device_tree, &irq_manager).unwrap();
 
     unsafe {
         enable();

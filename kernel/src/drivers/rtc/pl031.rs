@@ -1,4 +1,4 @@
-use crate::drivers::{self, common::MMIODerefWrapper, Driver};
+use crate::{drivers::{self, common::MMIODerefWrapper, Driver}, TimeSpec};
 use alloc::sync::Arc;
 use register::{mmio::*, register_bitfields, register_structs};
 
@@ -78,7 +78,7 @@ impl Pl031Rtc {
     }
 
     pub fn set_next(&self) {
-        let x = self.read_epoch() as u32;
+        let x = self.read_epoch().secs as u32;
         self.registers.MR.set(x + 2);
     }
 }
@@ -111,8 +111,8 @@ impl Driver for Pl031Rtc {
 }
 
 impl RtcDriver for Pl031Rtc {
-    fn read_epoch(&self) -> u64 {
-        self.registers.DR.get() as u64
+    fn read_epoch(&self) -> TimeSpec {
+        TimeSpec::new(self.registers.DR.get() as i64, 0)
     }
 }
 
@@ -132,6 +132,7 @@ pub fn driver_init(
 
     let rtc = unsafe { Arc::new(Pl031Rtc::new(vaddr)) };
     rtc.init().unwrap();
+    crate::drivers::RTC_DRIVER.call_once(|| rtc);
     irq_manager
         .register_and_enable_local_irq(irq_num, rtc.clone())
         .unwrap();

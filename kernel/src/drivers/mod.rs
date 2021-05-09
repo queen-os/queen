@@ -1,3 +1,6 @@
+use spin::Once;
+use alloc::sync::Arc;
+
 pub mod block;
 pub mod bus;
 mod common;
@@ -14,10 +17,18 @@ pub use irq::IrqManager;
 pub use rtc::RtcDriver;
 pub use serial::SerialDriver;
 
-#[derive(Debug)]
-pub struct DriverError {}
 
 pub type Result<T> = core::result::Result<T, DriverError>;
+
+pub static RTC_DRIVER: Once<Arc<dyn RtcDriver>> = Once::new();
+
+#[inline]
+pub fn read_epoch() -> crate::TimeSpec {
+    RTC_DRIVER.get().map(|rtc| rtc.read_epoch()).unwrap_or(crate::TimeSpec::zero())
+}
+
+#[derive(Debug)]
+pub struct DriverError {}
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum DeviceType {

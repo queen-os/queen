@@ -30,7 +30,6 @@ pub struct FileHandle {
     inode: Arc<dyn INode>,
     description: Arc<RwLock<OpenFileDescription>>,
     pub path: String,
-    pub pipe: bool, // specify if this is pipe, socket, or FIFO
     pub fd_cloexec: bool,
 }
 
@@ -40,6 +39,16 @@ pub struct OpenOptions {
     pub write: bool,
     /// Before each write, the file offset is positioned at the end of the file.
     pub append: bool,
+}
+
+impl From<queen_syscall::flags::OpenFlags> for OpenOptions {
+    fn from(flag: queen_syscall::flags::OpenFlags) -> Self {
+        OpenOptions {
+            read: flag.readable(),
+            write: flag.writable(),
+            append: flag.is_append(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -54,14 +63,12 @@ impl FileHandle {
         inode: Arc<dyn INode>,
         options: OpenOptions,
         path: String,
-        pipe: bool,
         fd_cloexec: bool,
     ) -> Self {
         return FileHandle {
             inode,
             description: OpenFileDescription::create(options),
             path,
-            pipe,
             fd_cloexec,
         };
     }
@@ -72,7 +79,6 @@ impl FileHandle {
             inode: self.inode.clone(),
             description: self.description.clone(),
             path: self.path.clone(),
-            pipe: self.pipe,
             fd_cloexec, // this field do not share
         }
     }

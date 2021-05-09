@@ -108,7 +108,6 @@ pub fn init_heap() {
 /// Return true to continue, false to halt.
 pub fn handle_page_fault(addr: usize) -> bool {
     debug!("page fault from kernel @ {:#x}", addr);
-    // TODO
     // let thread = current_thread().unwrap();
     // let mut lock = thread.vm.lock();
     // lock.handle_page_fault(addr)

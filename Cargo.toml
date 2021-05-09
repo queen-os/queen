@@ -1,5 +1,5 @@
 [workspace]
-members = ["aarch64", "kernel", "allocators", "fs", "atomic-stamped-ptr", "shell"]
+members = ["aarch64", "kernel", "allocators", "fs", "atomic-stamped-ptr", "shell", "syscall"]
 
 [profile.release]
 lto = true
