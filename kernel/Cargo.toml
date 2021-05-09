@@ -16,7 +16,6 @@ aarch64 = { path = "../aarch64" }
 allocators = { path = "../allocators" }
 queen-fs = { path = "../fs" }
 queen-syscall = { path = "../syscall" }
-cstr_core = "0.2.3"
 log = "0.4"
 spin = { version = "0.9", default-features = false, features = [
     "mutex",

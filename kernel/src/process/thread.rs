@@ -219,7 +219,6 @@ impl Thread {
                 },
                 String::from("/dev/tty"),
                 false,
-                false,
             ),
         );
         files.insert(
@@ -233,7 +232,6 @@ impl Thread {
                 },
                 String::from("/dev/tty"),
                 false,
-                false,
             ),
         );
         files.insert(
@@ -246,7 +244,6 @@ impl Thread {
                     append: false,
                 },
                 String::from("/dev/tty"),
-                false,
                 false,
             ),
         );
