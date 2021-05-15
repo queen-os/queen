@@ -64,13 +64,14 @@ pub fn init(device_tree: DeviceTree) {
 
     let irq_manager = drivers::irq::gicv2::driver_init(device_tree).unwrap();
     irq_manager.init().unwrap();
-    IRQ_MANAGER.call_once(|| irq_manager);
 
     crate::arch::timer::driver_init(device_tree, &irq_manager);
 
     drivers::serial::pl011_uart::driver_init(device_tree, &irq_manager);
 
     drivers::rtc::pl031::driver_init(device_tree, &irq_manager).unwrap();
+
+    IRQ_MANAGER.call_once(|| irq_manager);
 
     unsafe {
         enable();

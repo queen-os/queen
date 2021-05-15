@@ -170,20 +170,20 @@ impl Syscall<'_> {
             _ => return Err(SysError::EINVAL),
         };
         let mut process = self.process();
-        let file = process.get_file(fd)?;
+        let file = process.get_file_mut(fd)?;
         let offset = file.seek(pos)?;
         Ok(offset as usize)
     }
 
     #[inline]
     pub fn sys_fsync(&mut self, fd: usize) -> SysResult {
-        self.process().get_file(fd)?.sync_all()?;
+        self.process().get_file_mut(fd)?.sync_all()?;
         Ok(0)
     }
 
     #[inline]
     pub fn sys_fdata_sync(&mut self, fd: usize) -> SysResult {
-        self.process().get_file(fd)?.sync_data()?;
+        self.process().get_file_mut(fd)?.sync_data()?;
         Ok(0)
     }
 
@@ -195,7 +195,7 @@ impl Syscall<'_> {
     }
 
     pub fn sys_ftruncate(&mut self, fd: usize, len: usize) -> SysResult {
-        self.process().get_file(fd)?.set_len(len as u64)?;
+        self.process().get_file_mut(fd)?.set_len(len as u64)?;
         Ok(0)
     }
 

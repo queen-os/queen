@@ -234,14 +234,7 @@ impl Executor {
         (task, sched_task)
     }
 
-    #[inline]
     pub fn run(&self) {
-        loop {
-            self.tick();
-        }
-    }
-
-    fn tick(&self) {
         let run_queue = self.run_queue.clone();
         loop {
             let (tid, task, runnable) = run_queue.lock().pop_task_to_run();
@@ -318,6 +311,7 @@ impl RunQueue {
     fn remove_task(&mut self, mut task: MutexGuard<SchedTask>) {
         task.on_rq = false;
         let contained = self.ready_tasks.remove(&task.tid).is_some();
+        // without `self.current_task.take()`
         let contained = contained
             || self
                 .current_task
@@ -382,6 +376,7 @@ impl RunQueue {
         let runnable = self.ready_tasks.remove(&next_tid).unwrap().1.runnable;
         let task = global_state().task(next_tid).unwrap();
         task.lock().exec_start = arch::timer::read_ns() as usize;
+        self.current_task = Some((next_tid, task.clone()));
 
         (next_tid, task, runnable)
     }

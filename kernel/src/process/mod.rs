@@ -1,6 +1,5 @@
 use self::thread::{Tid, THREADS};
 use crate::{
-    consts::MAX_CPU_NUM,
     fs::FileHandle,
     memory::MemorySet,
     signal::{Siginfo, Signal, SignalAction, Sigset},

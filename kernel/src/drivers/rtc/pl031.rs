@@ -1,4 +1,7 @@
-use crate::{drivers::{self, common::MMIODerefWrapper, Driver}, TimeSpec};
+use crate::{
+    drivers::{self, common::MMIODerefWrapper, Driver},
+    TimeSpec,
+};
 use alloc::sync::Arc;
 use register::{mmio::*, register_bitfields, register_structs};
 
@@ -132,10 +135,12 @@ pub fn driver_init(
 
     let rtc = unsafe { Arc::new(Pl031Rtc::new(vaddr)) };
     rtc.init().unwrap();
-    crate::drivers::RTC_DRIVER.call_once(|| rtc);
+
     irq_manager
         .register_and_enable_local_irq(irq_num, rtc.clone())
         .unwrap();
+
+    crate::drivers::RTC_DRIVER.call_once(|| rtc.clone());
 
     Some(rtc)
 }
