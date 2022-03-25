@@ -5,7 +5,11 @@ use crate::{
 };
 use alloc::sync::Arc;
 use core::fmt;
-use register::{mmio::*, register_bitfields, register_structs};
+use tock_registers::{
+    interfaces::*,
+    register_bitfields, register_structs,
+    registers::{ReadOnly, ReadWrite, WriteOnly},
+};
 
 // PL011 UART registers.
 //

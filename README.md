@@ -14,3 +14,10 @@ GDB 调试内核。
 
 ## TODO
 * 打印系统信息
+
+
+## Dev
+```shell
+cd kernel
+make run
+```

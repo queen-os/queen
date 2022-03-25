@@ -8,7 +8,11 @@
 //!   - SPI - Shared Peripheral Interrupt.
 
 use crate::{drivers::common::MMIODerefWrapper, sync::spin::MutexNoIrq};
-use register::{mmio::*, register_bitfields, register_structs};
+use tock_registers::{
+    interfaces::*,
+    register_bitfields, register_structs,
+    registers::{ReadOnly, ReadWrite, WriteOnly},
+};
 
 register_bitfields! {
     u32,

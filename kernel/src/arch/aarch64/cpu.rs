@@ -1,9 +1,7 @@
 use aarch64::asm;
-pub use aarch64::asm::nop;
+use core::arch::asm;
 
-pub fn halt() {
-    asm::wfi();
-}
+pub use aarch64::asm::{halt, nop};
 
 pub fn wait_forever() -> ! {
     loop {

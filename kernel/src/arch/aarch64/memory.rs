@@ -1,5 +1,3 @@
-use core::ops::Range;
-
 use super::bsp::{PERIPHERALS_END, PERIPHERALS_START};
 use crate::{
     consts::KERNEL_OFFSET,
@@ -11,9 +9,10 @@ use crate::{
 };
 use aarch64::{
     paging::Frame,
-    registers::{RegisterReadWrite, FAR_EL1},
+    registers::{Readable, FAR_EL1},
     translation::{local_invalidate_tlb_all, ttbr_el1_write},
 };
+use core::ops::Range;
 
 static KERNEL_MEMORY_SET: Mutex<Option<MemorySet>> = Mutex::new(None);
 
@@ -106,7 +105,11 @@ fn map_kernel(MemInitOpts { phys_mem_range }: &MemInitOpts) {
     unsafe { page_table.activate_as_kernel() };
     *KERNEL_MEMORY_SET.lock() = Some(ms);
 
-    info!("Mapped kernel image to 0x{:X}-0x{:X}.", symbol_addr!(stext), symbol_addr!(_end));
+    info!(
+        "Mapped kernel image to 0x{:X}-0x{:X}.",
+        symbol_addr!(stext),
+        symbol_addr!(_end)
+    );
 }
 
 /// map the I/O memory range into the kernel page table

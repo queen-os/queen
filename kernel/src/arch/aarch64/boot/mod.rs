@@ -1,6 +1,5 @@
 use super::bsp::{MEMORY_END, MEMORY_START, PERIPHERALS_END, PERIPHERALS_START};
 use crate::memory::as_upper_range;
-
 use aarch64::{
     addr::{align_down, align_up, ALIGN_2MIB},
     asm::cpuid,
@@ -12,7 +11,11 @@ use aarch64::{
     registers::*,
     translation,
 };
-use core::ptr;
+#[allow(unused_imports)]
+use core::{
+    arch::{asm, global_asm},
+    ptr,
+};
 
 global_asm!(include_str!("entry.S"));
 
@@ -88,9 +91,11 @@ pub unsafe extern "C" fn enable_mmu() {
     }
 
     MAIR_EL1.write(
-        MAIR_EL1::Attr0.val(MairNormal::config_value())
-            + MAIR_EL1::Attr1.val(MairDevice::config_value())
-            + MAIR_EL1::Attr2.val(MairNormalNonCacheable::config_value()),
+        MAIR_EL1::Attr0_Normal_Inner::WriteBack_NonTransient_ReadWriteAlloc
+            + MAIR_EL1::Attr0_Normal_Outer::WriteBack_NonTransient_ReadWriteAlloc
+            + MAIR_EL1::Attr1_Device::nonGathering_nonReordering_EarlyWriteAck
+            + MAIR_EL1::Attr2_Normal_Inner::NonCacheable
+            + MAIR_EL1::Attr2_Normal_Outer::NonCacheable,
     );
 
     // Configure various settings of stage 1 of the EL1 translation regime.

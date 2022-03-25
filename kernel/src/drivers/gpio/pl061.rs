@@ -1,6 +1,9 @@
-use register::{mmio::*, register_structs};
-
 use crate::drivers::common::MMIODerefWrapper;
+use tock_registers::{
+    interfaces::*,
+    register_structs,
+    registers::{ReadOnly, ReadWrite, WriteOnly},
+};
 
 register_structs! {
     #[allow(non_snake_case)]

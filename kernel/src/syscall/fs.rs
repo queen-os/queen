@@ -6,7 +6,6 @@ use crate::{
     utils::{from_cstr, write_cstr},
 };
 use alloc::{string::String, vec::Vec};
-use core::ptr::NonNull;
 use queen_syscall::flags::{AtFlags, OpenFlags, AT_FDCWD};
 
 impl Syscall<'_> {
@@ -164,6 +163,7 @@ impl Syscall<'_> {
 
     pub fn sys_lseek(&mut self, fd: usize, offset: i64, whence: u8) -> SysResult {
         let pos = match whence {
+            // FIXME
             SEEK_SET => SeekFrom::Start(offset as u64),
             SEEK_END => SeekFrom::End(offset),
             SEEK_CUR => SeekFrom::Current(offset),
@@ -208,7 +208,7 @@ impl Syscall<'_> {
         let mut process = self.process();
         // close fd2 first if it is opened
         process.files.remove(&fd2);
-        let mut file = process.get_file(fd1)?.dup(flags != 0);
+        let file = process.get_file(fd1)?.dup(flags != 0);
         process.files.insert(fd2, file);
 
         Ok(fd2)

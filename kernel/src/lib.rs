@@ -1,15 +1,14 @@
 #![no_std]
 #![feature(lang_items)]
 #![feature(panic_info_message)]
-#![feature(global_asm)]
-#![feature(asm)]
 #![feature(format_args_nl)]
-#![feature(const_fn_fn_ptr_basics)]
 #![feature(const_btree_new)]
 #![feature(map_first_last)]
 
+#[allow(unused_imports)]
 #[macro_use]
 extern crate alloc;
+#[allow(unused_imports)]
 #[macro_use]
 extern crate num_derive;
 #[macro_use]

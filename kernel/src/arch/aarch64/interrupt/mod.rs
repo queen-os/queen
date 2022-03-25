@@ -2,9 +2,9 @@
 
 pub use self::handler::*;
 
-use crate::drivers::{self, irq::GicV2, rtc::Pl031Rtc, DeviceTree, Driver};
+use crate::drivers::{self, irq::GicV2, DeviceTree, Driver};
 use aarch64::registers::*;
-use alloc::sync::Arc;
+use core::arch::asm;
 use spin::Once;
 
 pub mod consts;

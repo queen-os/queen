@@ -24,8 +24,7 @@ spin = { version = "0.9", default-features = false, features = [
     "once",
     "lazy",
 ] }
-register = { version = "1.0", features = ["no_std_unit_tests"] }
-fdt-rs = { version = "0.4", default-features = false }
+fdt-rs = { version = "0.4.3", default-features = false }
 num_enum = { version = "0.5", default-features = false }
 num-traits = { version = "0.2", default-features = false }
 num-derive = "0.3"
@@ -35,4 +34,5 @@ ahash = { version = "0.7", default-features = false }
 bitflags = "1.2"
 vec-arena = "1.1"
 smallvec = "1.6"
-xmas-elf = "0.7"
+xmas-elf = "0.8"
+tock-registers = "0.7"

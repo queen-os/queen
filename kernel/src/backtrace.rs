@@ -1,5 +1,5 @@
 //! Provide backtrace upon panic
-use core::mem::size_of;
+use core::{mem::size_of, arch::asm};
 
 extern "C" {
     fn stext();

@@ -2,8 +2,8 @@ use alloc::vec::Vec;
 use core::{
     hint::spin_loop,
     sync::atomic::{AtomicBool, Ordering},
+    arch::asm
 };
-
 use crate::{drivers, memory::phys_to_virt, consts::QUEEN_OS};
 
 mod boot;
@@ -41,7 +41,7 @@ unsafe extern "C" fn main_start() -> ! {
     crate::task::init(bsp::CPU_NUM);
     interrupt::init(device_tree);
 
-    // async_test();
+    async_test();
     AP_CAN_INIT.store(true, Ordering::Release);
     crate::kmain();
 }

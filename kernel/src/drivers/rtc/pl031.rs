@@ -3,7 +3,11 @@ use crate::{
     TimeSpec,
 };
 use alloc::sync::Arc;
-use register::{mmio::*, register_bitfields, register_structs};
+use tock_registers::{
+    interfaces::*,
+    register_bitfields, register_structs,
+    registers::{ReadOnly, ReadWrite, WriteOnly},
+};
 
 use super::RtcDriver;
 

@@ -8,9 +8,9 @@ version = "0.1.0"
 dependencies = [
  "bit_field",
  "bitflags",
- "cast",
+ "cast 0.3.0",
  "cortex-a",
- "register",
+ "tock-registers",
  "ux",
 ]
 
@@ -86,9 +86,9 @@ checksum = "dcb6dd1c2376d2e096796e234a70e17e94cc2d5d54ff8ce42b28cef1d0d359a4"
 
 [[package]]
 name = "bitflags"
-version = "1.2.1"
+version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
+checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitvec"
@@ -146,9 +146,9 @@ checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
 name = "cache-padded"
-version = "1.1.1"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "631ae5198c9be5e753e5cc215e1bd73c2b466a3565173db433f52bb9d3e66dba"
+checksum = "c1db59621ec70f09c5e9b597b220c7a2b43611f4710dc03ceb8748637775692c"
 
 [[package]]
 name = "cast"
@@ -158,6 +158,12 @@ checksum = "cc38c385bfd7e444464011bb24820f40dd1c76bcdfa1b78611cb7c2e5cafab75"
 dependencies = [
  "rustc_version",
 ]
+
+[[package]]
+name = "cast"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cfg-if"
@@ -178,11 +184,11 @@ dependencies = [
 
 [[package]]
 name = "cortex-a"
-version = "5.1.6"
+version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecefc30975eb87afc5a810d4b2305c0ec29e607ea97e51b2ecd80766e9268d28"
+checksum = "27bd91f65ccd348bb2d043d98c5b34af141ecef7f102147f59bf5898f6e734ad"
 dependencies = [
- "register",
+ "tock-registers",
 ]
 
 [[package]]
@@ -192,7 +198,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab327ed7354547cc2ef43cbe20ef68b988e70b4b593cbd66a2a61733123a3d23"
 dependencies = [
  "atty",
- "cast",
+ "cast 0.2.5",
  "clap",
  "criterion-plot",
  "csv",
@@ -217,7 +223,7 @@ version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e022feadec601fba1649cfa83586381a4ad31c6bf3a9ab7d408118b05dd9889d"
 dependencies = [
- "cast",
+ "cast 0.2.5",
  "itertools 0.9.0",
 ]
 
@@ -384,9 +390,9 @@ dependencies = [
 
 [[package]]
 name = "fdt-rs"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89ea36ba3036e4a2c3d9d9e110f2e1b6a1d1afd869b1f875f6912cc17a60d972"
+checksum = "99a40cabc11c8258822a593f5c51f2d9f4923e715ca9e2a0630cf77ae15f390b"
 dependencies = [
  "endian-type-rs",
  "fallible-iterator",
@@ -776,9 +782,9 @@ dependencies = [
  "priority-queue",
  "queen-fs",
  "queen-syscall",
- "register",
  "smallvec",
  "spin",
+ "tock-registers",
  "vec-arena",
  "xmas-elf",
 ]
@@ -953,15 +959,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24d5f089152e60f62d28b835fbff2cd2e8dc0baf1ac13343bef92ab7eed84548"
 
 [[package]]
-name = "register"
-version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4a247de29ab7cc8f5006cfe775c4a81c704f9914c5e2a79696862e643135433"
-dependencies = [
- "tock-registers",
-]
-
-[[package]]
 name = "remove_dir_all"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1073,9 +1070,9 @@ checksum = "f173ac3d1a7e3b28003f40de0b5ce7fe2710f9b9dc3fc38664cebee46b3b6527"
 
 [[package]]
 name = "smallvec"
-version = "1.6.1"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0f37c9e8f3c5a4a66ad655a93c74daac4ad00c441533bf5c6e7990bb42604e"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "spin"
@@ -1153,9 +1150,9 @@ dependencies = [
 
 [[package]]
 name = "tock-registers"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f521a79accce68c417c9c77ce22108056b626126da1932f7e2e9b5bbffee0cea"
+checksum = "4ee8fba06c1f4d0b396ef61a54530bb6b28f0dc61c38bc8bc5a5a48161e6282e"
 
 [[package]]
 name = "unicode-width"
@@ -1319,9 +1316,9 @@ checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
 name = "xmas-elf"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e74de9a366f6ab8c405fa6b371d9ac24943921fa14b3d64afcb202065c405f11"
+checksum = "8d29b4d8e7beaceb4e77447ba941a7600d23d0319ab52da0461abea214832d5a"
 dependencies = [
  "zero",
 ]

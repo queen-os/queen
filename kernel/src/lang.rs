@@ -23,7 +23,7 @@ macro_rules! symbol_addr {
             let x: usize;
             #[allow(unused_unsafe)]
             unsafe {
-                asm!(concat!("adrp {}, ", stringify!($symbol)), out(reg) x);
+                core::arch::asm!(concat!("adrp {}, ", stringify!($symbol)), out(reg) x);
             }
             x
         }
